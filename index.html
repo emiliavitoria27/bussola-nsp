@@ -154,6 +154,13 @@ label.campo .ajuda{font-size:.74rem;font-weight:400}
 .limites{margin:12px 0 0;padding:10px 12px;border-radius:var(--raio-p);background:var(--ambar-claro);font-size:.84rem}
 .limites ul{margin:4px 0 0;padding-left:18px}
 .lista-pc{margin:0;padding-left:20px} .lista-pc li{margin:6px 0}
+.lista-pc li small{display:block;color:var(--suave);font-size:.78rem}
+.neg-item{border:1px solid var(--linha);border-radius:var(--raio-p);padding:14px;background:var(--superficie)}
+.neg-item h3{margin:0 0 4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.neg-item dl{margin:8px 0 0;display:grid;gap:8px}
+.neg-item dt{font-weight:650;font-size:.82rem;color:var(--suave)}
+.neg-item dd{margin:0;font-size:.92rem}
+.neg-item dd ul{margin:2px 0 0;padding-left:18px}
 .indicadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0 4px}
 .ind{background:var(--superficie-2);border:1px solid var(--linha);border-radius:var(--raio-p);padding:12px}
 .ind b{display:block;font-size:1.2rem;font-weight:720}
@@ -396,6 +403,9 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
         <label class="campo">Distrito (dados de temporada)<select id="f-distrito"><option value="">Escolha</option></select></label>
         <label class="campo">Metrô mais perto (metros)<input id="f-metro" inputmode="numeric" placeholder="ex.: 500"></label>
         <label class="campo">Já vem mobiliado?<select id="f-mobiliado"><option value="nao">Não</option><option value="sim">Sim</option></select></label>
+        <label class="campo">Ano de construção<input id="f-ano" inputmode="numeric" placeholder="se souber"></label>
+        <label class="campo">Estado de conservação<select id="f-conservacao"><option value="">Não informado</option><option value="otimo">Novo ou reformado</option><option value="bom">Bom</option><option value="regular">Regular, com desgaste</option><option value="reforma">Precisa de reforma</option></select><span class="ajuda" id="f-conservacao-fonte"></span></label>
+        <label class="campo">Padrão de acabamento<select id="f-padrao"><option value="">Não informado (normal)</option><option value="baixo">Simples</option><option value="normal">Normal</option><option value="alto">Alto</option></select></label>
       </div>
       <div class="acoes"><button class="botao" type="button" id="btn-calcular">Atualizar análise</button></div>
     </details>
@@ -424,8 +434,8 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
 
       <div class="grade-score">
         <section class="card" aria-labelledby="t-score" id="sec-score">
-          <h2 id="t-score">Score de oportunidade</h2>
-          <p class="sub" style="margin:0">Mede o imóvel como oportunidade imobiliária. É o mesmo em Moradia e Investimento.</p>
+          <h2 id="t-score">Score de oportunidade <span class="chip azul" id="score-fin" style="vertical-align:middle">investimento</span></h2>
+          <p class="sub" style="margin:0" id="score-sub"></p>
           <div class="anel" style="margin-top:12px">
             <svg viewBox="0 0 120 120" role="img" aria-labelledby="score-txt"><circle cx="60" cy="60" r="50" stroke="var(--linha)" stroke-width="11" fill="none"/><circle id="score-arco" cx="60" cy="60" r="50" stroke="var(--verde)" stroke-width="11" fill="none" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="314.16" stroke-dashoffset="314.16" style="transition:stroke-dashoffset .6s ease"/><text x="60" y="60" text-anchor="middle" dominant-baseline="central" font-size="30" font-weight="780" fill="var(--tinta)" font-family="Archivo, system-ui, sans-serif" id="score-num">–</text></svg>
             <div><p class="veredito-t" id="score-classe"></p><p class="sub" style="margin:0" id="score-txt"></p></div>
@@ -494,6 +504,7 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
         <section class="card" aria-labelledby="t-custos">
           <h2 id="t-custos">Custos de compra e manutenção</h2>
           <div class="tabela"><table id="custos-tabela"></table></div>
+          <p class="sub" id="manut-explica" style="margin:10px 0 0;font-size:.84rem"></p>
         </section>
         <section class="card" aria-labelledby="t-riscos">
           <h2 id="t-riscos">Riscos e facilidade de revenda</h2>
@@ -502,15 +513,20 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
         </section>
       </div>
 
-      <section class="card" aria-labelledby="t-corretor">
+      <section class="card" aria-labelledby="t-corretor" id="sec-negociacao">
         <h2 id="t-corretor">Argumentos e negociação</h2>
-        <p class="sub">O que pesa a favor, dúvidas que costumam aparecer e uma faixa de proposta baseada nos números acima.</p>
-        <div class="grade-2">
-          <div><h3>Argumentos</h3><ul class="lista-pc" id="c-args"></ul></div>
-          <div><h3>Objeções prováveis e como responder</h3><ul class="lista-pc" id="c-obj"></ul></div>
+        <p class="sub">Gerado a partir do anúncio, da localização, do catálogo da Nova SP e dos cálculos acima. Itens sem dado aparecem como “confirmar”: nada é presumido.</p>
+        <div class="segmento" role="tablist" aria-label="Lado da negociação" style="margin-bottom:14px;flex-wrap:wrap">
+          <button type="button" data-neg-aba="imovel" aria-pressed="true">Argumentos do imóvel</button>
+          <button type="button" data-neg-aba="comprador" aria-pressed="false">Com o comprador</button>
+          <button type="button" data-neg-aba="vendedor" aria-pressed="false">Com o proprietário</button>
+          <button type="button" data-neg-aba="proposta" aria-pressed="false">Proposta</button>
         </div>
-        <h3 style="margin-top:16px">Faixa de proposta sugerida</h3><div class="indicadores" id="c-proposta"></div>
-        <p class="sub" style="margin-top:8px">Sugestão de negociação com base nos números do anúncio, não é avaliação técnica. Para um valor formal, use um Parecer Técnico de Avaliação Mercadológica (PTAM) feito por corretor avaliador.</p>
+        <div data-neg-painel="imovel"><ul class="lista-pc" id="c-args"></ul></div>
+        <div data-neg-painel="comprador" class="oculto"><div class="pilha" id="c-comprador"></div></div>
+        <div data-neg-painel="vendedor" class="oculto"><div class="pilha" id="c-vendedor"></div></div>
+        <div data-neg-painel="proposta" class="oculto"><div class="indicadores" id="c-proposta"></div>
+          <p class="sub" style="margin-top:8px">Sugestão de negociação com base nos números do anúncio, não é avaliação técnica. Para um valor formal, use um Parecer Técnico de Avaliação Mercadológica (PTAM) feito por corretor avaliador.</p></div>
       </section>
 
       <section class="card">
@@ -763,11 +779,13 @@ function premissasPadrao() {
   const I = BASES.indicadores || {};
   const selic = I.selic?.valor ?? 14;
   return [
-    { id: "aluguelM2", rot: "Aluguel tradicional (R$/m² por mês)", v: I.aluguel_m2_sp?.valor ?? 65.78, fonte: I.aluguel_m2_sp ? `${I.aluguel_m2_sp.fonte}, ${I.aluguel_m2_sp.data}` : "FipeZAP" },
+    { id: "aluguelM2", rot: "Aluguel tradicional (R$/m² por mês)", v: I.aluguel_m2_sp?.valor ?? 65.78, fonte: `${I.aluguel_m2_sp ? `${I.aluguel_m2_sp.fonte}, ${I.aluguel_m2_sp.data}` : "FipeZAP"}. Referência complementar: R$ 75,20/m² no Índice de Aluguel QuintoAndar Imovelweb (jul/2026)` },
     { id: "vacancia", rot: "Meses vazio por ano (tradicional)", v: 1, fonte: "Hipótese" },
     { id: "adm", rot: "Taxa de administração do aluguel (%)", v: 10, fonte: "Prática de mercado" },
     { id: "ir", rot: "Imposto de renda sobre o aluguel (% efetivo)", v: 15, fonte: "Hipótese; depende da sua renda (carnê-leão chega a 27,5%)" },
-    { id: "manut", rot: "Manutenção por ano (% do valor do imóvel)", v: 0.4, fonte: "Hipótese" },
+    { id: "cub", rot: "Custo de construção, CUB R8-N (R$/m²)", v: 2221.44, fonte: "SindusCon-SP, junho/2026 (base da estimativa de manutenção)" },
+    { id: "manutApto", rot: "Manutenção de apartamento (% ao ano do custo de reconstrução)", v: 1.0, fonte: "Hipótese do Radar: parte interna da unidade; áreas comuns já estão no condomínio" },
+    { id: "manutCasa", rot: "Manutenção de casa (% ao ano do custo de reconstrução)", v: 1.5, fonte: "Hipótese do Radar: inclui telhado, fachada e áreas externas" },
     { id: "itbi", rot: "ITBI (%)", v: 3, fonte: "Prefeitura de São Paulo, alíquota geral" },
     { id: "cartorio", rot: "Escritura e registro (%)", v: 1.5, fonte: "Estimativa; confirme no cartório" },
     { id: "valoriza", rot: "Valorização do imóvel por ano (%)", v: I.venda_var12m?.valor ?? 5.5, fonte: I.venda_var12m ? `${I.venda_var12m.fonte}, 12 meses até ${I.venda_var12m.data}` : "FipeZAP" },
@@ -852,7 +870,7 @@ $("form-link").addEventListener("submit", async (e) => {
     abrirFormulario({});
   } finally { btn.disabled = false; btn.textContent = "Analisar imóvel"; }
 });
-function limparImovel() { Object.assign(IMOVEL, { similares: [], lat: null, lng: null, ref: "", url: "", foto: null, pois: [], lazer: [], tags: [], fonte: "manual", tipo: "", bairro: "", cidade: "São Paulo", suites: null, condominioNome: null, metroEstacao: null }); }
+function limparImovel() { Object.assign(IMOVEL, { similares: [], lat: null, lng: null, ref: "", url: "", foto: null, pois: [], lazer: [], tags: [], fonte: "manual", tipo: "", bairro: "", cidade: "São Paulo", suites: null, condominioNome: null, metroEstacao: null, diferenciais: [], conservacaoTrecho: null, anoConstrucao: null, conservacao: null }); }
 $("btn-manual").addEventListener("click", () => { limparImovel(); $("voltar-busca").classList.add("oculto"); abrirFormulario({}); $("f-preco").focus(); });
 $("btn-calcular").addEventListener("click", () => calcular(true));
 
@@ -863,6 +881,10 @@ function abrirFormulario(d) {
   set("f-condo", d.condominio); set("f-iptu", d.iptu); set("f-bairro", d.bairro); set("f-metro", d.metroDistancia);
   if (d.tipo) { const t = [...$("f-tipo").options].find((o) => normal(d.tipo).startsWith(normal(o.text))); $("f-tipo").value = t ? t.text : (/casa|sobrado/i.test(d.tipo) ? "Casa" : "Outro"); }
   $("f-mobiliado").value = d.mobiliado ? "sim" : "nao";
+  set("f-ano", d.anoConstrucao ? String(d.anoConstrucao) : "");
+  $("f-conservacao").value = d.conservacao || "";
+  $("f-padrao").value = d.padrao || "";
+  $("f-conservacao-fonte").textContent = d.conservacaoTrecho ? `Preenchido pelo texto do anúncio: “${d.conservacaoTrecho}”` : "";
   $("f-distrito").value = d.bairro ? acharDistrito(d.bairro) : "";
 }
 document.querySelectorAll("#form-imovel input, #form-imovel select").forEach((el) => el.addEventListener("change", () => { if (!$("resultado").classList.contains("oculto")) calcular(); }));
@@ -873,6 +895,7 @@ function lerFormulario() {
     condo: num($("f-condo").value) ?? 0, iptu: num($("f-iptu").value) ?? 0, tipo: $("f-tipo").value, bairro: $("f-bairro").value.trim(),
     distrito: $("f-distrito").value, metro: num($("f-metro").value), objetivo: FINALIDADE === "moradia" ? "morar" : "investir", mobiliado: $("f-mobiliado").value === "sim",
     condoInformado: $("f-condo").value.trim() !== "", iptuInformado: $("f-iptu").value.trim() !== "",
+    ano: num($("f-ano").value), conservacao: $("f-conservacao").value, padrao: $("f-padrao").value,
   };
 }
 
@@ -897,7 +920,8 @@ function calcular(rolar) {
   const custoCompra = f.preco * (pc(P.itbi) + pc(P.cartorio));
   const investBase = f.preco + custoCompra;
   const mobilia = f.mobiliado ? 0 : P.mobiliaBase + P.mobiliaM2 * f.area;
-  const manutAno = f.preco * pc(P.manut);
+  const MAN = manutencaoEstimada(f, P);
+  const manutAno = MAN.anual;
   const fixoMes = f.condo + f.iptu;
   const aplicLiq = pc(P.aplicacao) * (1 - pc(P.irAplic));
   const ref = temporadaRef(f.distrito, f.quartos, IMOVEL.lat, IMOVEL.lng);
@@ -998,72 +1022,248 @@ function calcular(rolar) {
   // conclusão da finalidade escolhida (moradia ou investimento): separada do score
   const ref10 = f.objetivo === "morar" ? morar[1].comprar / morar[1].alugar - 1 : proj[1].melhor.patrimonio / proj[1].aplicMelhor - 1;
   // score de oportunidade: independe de moradia/investimento e não usa comprar x alugar
-  const score = calcularScore({ f, difSim, sims, estBairro, liq, condoM2, fixoMes, alugMes });
+  const X = { f, difSim, sims, estBairro, liq, condoM2, alugMes, melhor, aplicLiq, ref, manutAno };
+  const scores = { moradia: calcularScore("moradia", X), investimento: calcularScore("investimento", X) };
+  const score = scores[FINALIDADE];
 
-  const R = { f, P, ref, ests, trad, medio, curta, melhor, m2, sims, medSim, difSim, estBairro, proj, morar, breakeven, liq, condoM2, score, nota: score.nota, ref10, alugMes, custoCompra, investBase, mobilia, aplicLiq, manutAno, fixoMes, fin };
+  const R = { f, P, ref, ests, trad, medio, curta, melhor, m2, sims, medSim, difSim, estBairro, proj, morar, breakeven, liq, condoM2, score, scores, nota: score.nota, ref10, alugMes, custoCompra, investBase, mobilia, aplicLiq, manutAno, MAN, fixoMes, fin };
   desenhar(R);
   salvarNoLink(f);
   $("resultado").classList.remove("oculto");
   if (rolar) $("resumo").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
+// ================= NEGOCIAÇÃO =================
+// Tudo vem do anúncio, do catálogo e dos cálculos; quando falta dado, o texto pede para confirmar.
+const QA_ALUGUEL_SP = { valor: 75.2, data: "jul/2026", fonte: "Índice de Aluguel QuintoAndar Imovelweb (média da cidade de São Paulo)" };
+function concorrentes(f) {
+  if (!CAT.dados) return null;
+  const b = normal(f.bairro), g = C.grupoTipo(f.tipo);
+  const lista = CAT.dados.imoveis.filter((i) => i.ativo !== false && i.preco_venda && i.area && i.ref !== IMOVEL.ref && normal(i.bairro) === b && C.grupoTipo(i.tipo) === g
+    && (f.quartos == null || i.quartos == null || i.quartos === f.quartos) && i.area >= f.area * 0.75 && i.area <= f.area * 1.25);
+  const m2 = f.preco / f.area;
+  const todos = [...lista.map((i) => i.preco_venda / i.area), m2].sort((x, y) => x - y);
+  return { n: lista.length, posicao: todos.indexOf(m2) + 1, total: todos.length, maisBaratos: lista.filter((i) => i.preco_venda / i.area < m2).sort((x, y) => x.preco_venda / x.area - y.preco_venda / y.area).slice(0, 2) };
+}
+function gerarNegociacao(R) {
+  const { f, P } = R;
+  const fin = FINALIDADE; // finalidade escolhida (R.fin é o financiamento)
+  const args = [];
+  const noCat = CAT.dados?.imoveis.find((i) => i.ref === IMOVEL.ref);
+  const conc = concorrentes(f);
+  const comissaoPct = P.custoVenda;
+  // ---- argumentos específicos do imóvel
+  if (R.difSim != null && R.difSim < -0.02) args.push({ t: `Preço por m² de ${brl(R.m2)}, ${pct(-R.difSim, 0)} abaixo da mediana dos parecidos ${R.sims.slice(0, 3).map((s) => "Ref. " + s.ref).join(", ")} (${brl(R.medSim)}/m²).`, f: "imóveis parecidos sugeridos no próprio anúncio" });
+  if (R.estBairro?.difBairro != null && R.estBairro.difBairro < -0.02) args.push({ t: `${pct(-R.estBairro.difBairro, 0)} abaixo da mediana de ${R.estBairro.nBairro} imóveis da Nova SP à venda em ${f.bairro} (${brl(R.estBairro.medianaBairroM2)}/m²).`, f: "catálogo da Nova São Paulo" });
+  if (conc && conc.n >= 2) args.push({ t: `Entre ${conc.total} imóveis parecidos à venda na carteira em ${f.bairro} (mesmo tipo${f.quartos ? `, ${f.quartos} quartos` : ""}, área de ±25%), este é o ${conc.posicao}º mais barato por m².`, f: "catálogo da Nova São Paulo" });
+  if (f.metro != null && f.metro <= 1000) args.push({ t: `Metrô${IMOVEL.metroEstacao ? " " + IMOVEL.metroEstacao : ""}${noCat?.metro_linhas ? ` (linha ${noCat.metro_linhas.toLowerCase()})` : ""} a ${f.metro} m, cerca de ${Math.max(1, Math.round(f.metro / 80))} minutos a pé.`, f: "anúncio (GeoSampa)" });
+  const perto = (IMOVEL.pois || []).filter((p) => !/metr/i.test(p.tipo) && p.metros <= 1000).sort((a, b) => a.metros - b.metros);
+  if (perto.length) args.push({ t: `Perto de ${perto.slice(0, 4).map((p) => `${p.tipo.toLowerCase()} ${p.nome} (${p.metros} m)`).join("; ")}.`, f: "anúncio (GeoSampa/OpenStreetMap)" });
+  if (f.quartos && f.area / f.quartos >= 25) args.push({ t: `${Math.round(f.area / f.quartos)} m² por quarto: ambientes mais amplos que o padrão de imóveis compactos.`, f: "dados do anúncio" });
+  const extras = [IMOVEL.suites ? `${IMOVEL.suites} suíte(s)` : null, f.vagas >= 1 ? `${f.vagas} vaga(s)` : null, f.banheiros ? `${f.banheiros} banheiro(s)` : null].filter(Boolean);
+  if (extras.length) args.push({ t: `Distribuição: ${extras.join(", ")}.`, f: "dados do anúncio" });
+  const difer = [...(IMOVEL.lazer || []), ...(IMOVEL.diferenciais || [])];
+  if (difer.length) args.push({ t: `Diferenciais citados no anúncio: ${difer.join(", ")}.`, f: "anúncio" });
+  if (f.conservacao === "otimo") args.push({ t: `Imóvel ${IMOVEL.conservacaoTrecho ? `“${IMOVEL.conservacaoTrecho}”` : "novo ou reformado"}: o comprador evita gasto e prazo de obra.`, f: IMOVEL.conservacaoTrecho ? "texto do anúncio" : "informado no formulário" });
+  if (f.ano) { const id = new Date().getFullYear() - f.ano; if (id <= 10) args.push({ t: `Construção de ${f.ano} (${id} anos): manutenção estimada menor.`, f: "anúncio/formulário" }); }
+  const alugB = R.estBairro && /bairro/.test(R.estBairro.fonteAluguel || "") ? R.estBairro : null;
+  if (alugB) args.push({ t: `Aluguel estimado de ${brl(alugB.aluguelEst)}/mês pela ${alugB.fonteAluguel}: ${pct(alugB.rendaBruta)} ao ano bruto sobre o preço.`, f: "catálogo da Nova São Paulo" });
+  if (R.ref?.n) args.push({ t: `Temporada na região: diária típica de ${brl(R.ref.diaria)} e cerca de ${Math.round(R.ref.noites)} noites ocupadas por ano (${R.ref.n} anúncios).`, f: `Inside Airbnb, coleta de ${dataBR(R.ref.versao)}` });
+  if (R.liq >= 65) args.push({ t: `Índice de revenda de ${R.liq}/100: tipo, tamanho, faixa de preço e transporte favorecem uma venda futura.`, f: "índice do Radar" });
+  const h = noCat?.historico_preco || [];
+  if (h.length >= 2 && h[0].venda < h[1].venda) args.push({ t: `Preço já reduzido de ${brl(h[1].venda)} para ${brl(h[0].venda)} (${pct(1 - h[0].venda / h[1].venda, 0)}).`, f: "histórico do catálogo da Nova SP" });
+
+  // ---- comprador
+  const diasCat = noCat?.primeira_vez ? Math.round((Date.now() - new Date(noCat.primeira_vez)) / 864e5) : null;
+  const comprador = [
+    { titulo: "“O preço está acima do que eu esperava”", relevante: (R.difSim ?? 0) > 0.03 || (R.estBairro?.difBairro ?? 0) > 0.03,
+      partes: [["Preocupação", "Pagar mais do que o imóvel vale."], ["Por que surge", R.difSim != null ? `O preço por m² está ${R.difSim > 0 ? pct(R.difSim, 0) + " acima" : pct(-R.difSim, 0) + " abaixo"} dos parecidos do anúncio.` : "O cliente comparou com anúncios na internet."],
+        ["Argumentos", [R.difSim != null && R.difSim <= 0 ? `Mostre que o m² está ${pct(-R.difSim, 0)} abaixo dos parecidos (${R.sims.map((s) => "Ref. " + s.ref).join(", ")}).` : "Separe o que diferencia este imóvel dos mais baratos (vaga, suíte, conservação, metrô).", conc && conc.n ? `Na carteira há ${conc.n} parecidos em ${f.bairro}; este é o ${conc.posicao}º de ${conc.total} em preço por m².` : "Compare com imóveis da mesma rua ou prédio, não com a média da cidade.", "Lembre que anúncios mostram preço pedido; para preços fechados, consulte as transações de ITBI da Prefeitura."].filter(Boolean)],
+        ["Dados que ajudam", [`Preço por m²: ${brl(R.m2)}`, R.medSim ? `Mediana dos parecidos: ${brl(R.medSim)}/m²` : null, R.estBairro?.medianaBairroM2 ? `Mediana da Nova SP no bairro: ${brl(R.estBairro.medianaBairroM2)}/m² (${R.estBairro.nBairro} imóveis)` : null].filter(Boolean)],
+        ["Alternativas", ["Proposta dentro da faixa da aba “Proposta”, com sinal maior ou prazo curto em troca de desconto.", conc?.maisBaratos.length ? `Se o orçamento for o limite, apresente ${conc.maisBaratos.map((i) => `Ref. ${i.ref} (${brl(i.preco_venda)}, ${i.area} m²)`).join(" ou ")} e compare as diferenças.` : "Mostre opções semelhantes na busca de oportunidades."]]] },
+    { titulo: "“Vou precisar reformar”", relevante: f.conservacao === "reforma" || f.conservacao === "regular",
+      partes: [["Preocupação", "Gasto e prazo de obra antes de morar ou alugar."], ["Por que surge", f.conservacao ? `Conservação registrada: ${NOME_CONS[f.conservacao]}${IMOVEL.conservacaoTrecho ? ` (anúncio: “${IMOVEL.conservacaoTrecho}”)` : ""}.` : "O anúncio não informa o estado de conservação."],
+        ["Argumentos", f.conservacao === "otimo" ? ["O imóvel está novo ou reformado: sem obra imediata.", `Manutenção estimada de ${brl(R.manutAno / 12)}/mês, já com o fator de conservação.`] : ["Peça orçamento antes da proposta e use-o como base de desconto.", "Uma reforma permite escolher acabamentos, o que agrega valor na revenda."]],
+        ["Dados que ajudam", [`Manutenção estimada: ${brl(R.manutAno / 12)}/mês (${R.MAN.avisos.length ? "com dados faltando" : "dados completos"})`, f.ano ? `Construção de ${f.ano}` : "Ano de construção: confirmar com o proprietário"]],
+        ["Alternativas", ["Desconto equivalente ao orçamento da reforma.", "Prazo de entrega maior para o comprador planejar a obra."]]] },
+    { titulo: "“Não sei se a localização é boa”", relevante: f.metro == null || f.metro > 1000,
+      partes: [["Preocupação", "Transporte, serviços e segurança no dia a dia."], ["Por que surge", "O cliente não conhece a região ou trabalha longe."],
+        ["Argumentos", [f.metro != null ? `Metrô a ${f.metro} m${IMOVEL.metroEstacao ? " (" + IMOVEL.metroEstacao + ")" : ""}.` : "Distância do metrô: confirmar.", perto.length ? `Serviços a pé: ${perto.slice(0, 3).map((p) => `${p.tipo.toLowerCase()} a ${p.metros} m`).join(", ")}.` : "Levante escolas, mercados e ônibus próximos antes da visita."]],
+        ["Dados que ajudam", (IMOVEL.pois || []).map((p) => `${p.tipo}: ${p.nome}, ${p.metros} m`).slice(0, 6).concat((IMOVEL.pois || []).length ? [] : ["O anúncio não trouxe pontos de interesse"])],
+        ["Alternativas", ["Agende a visita no horário do trajeto do cliente.", "Mostre o caminho até o metrô ou ponto de ônibus a pé."]]] },
+    { titulo: "“Vi outros imóveis parecidos”", relevante: !!(conc && conc.n >= 3),
+      partes: [["Preocupação", "Fechar sem ter visto as alternativas."], ["Por que surge", conc ? `Há ${conc.n} imóveis parecidos à venda na carteira em ${f.bairro}.` : "O catálogo ainda não foi carregado."],
+        ["Argumentos", ["Monte uma comparação lado a lado (aba Oportunidades → Comparar) com preço, m², vagas e custos.", conc ? `Este é o ${conc.posicao}º de ${conc.total} em preço por m².` : "Compare preço por m², vagas e condomínio."]],
+        ["Dados que ajudam", [`Score de oportunidade: ${R.score.nota ?? "—"}/100 (${R.score.classe.toLowerCase()})`, `Índice de revenda: ${R.liq}/100`]],
+        ["Alternativas", ["Ofereça visitar dois parecidos no mesmo dia para decidir com segurança."]]] },
+    { titulo: "“O condomínio e os custos são altos”", relevante: f.condoInformado && R.condoM2 > 15,
+      partes: [["Preocupação", "Custo mensal fixo pesando no orçamento."], ["Por que surge", f.condoInformado ? `Condomínio de ${brl(f.condo)} (${brl(R.condoM2, 2)}/m²)${f.iptuInformado ? ` e IPTU de ${brl(f.iptu)}/mês` : ""}.` : "Condomínio não informado: confirmar."],
+        ["Argumentos", [(IMOVEL.lazer || []).length ? `O condomínio inclui ${IMOVEL.lazer.join(", ")}.` : "Peça a previsão orçamentária para mostrar o que o condomínio cobre.", fin === "investimento" ? "No aluguel tradicional, condomínio e IPTU são pagos pelo inquilino." : `Custo mensal total estimado: ${brl(R.fixoMes + R.manutAno / 12)} (condomínio, IPTU e manutenção).`]],
+        ["Dados que ajudam", [`Condomínio + IPTU: ${brl(R.fixoMes)}/mês`, `Manutenção estimada: ${brl(R.manutAno / 12)}/mês`]],
+        ["Alternativas", [R.condoM2 > 18 ? "Use o condomínio acima da média como argumento de desconto no preço." : "Confirme se há rateio extra ou obra prevista em assembleia."]]] },
+    { titulo: "“Não sei se consigo financiar”", relevante: fin === "moradia",
+      partes: [["Preocupação", "Aprovação do crédito e valor da parcela."], ["Por que surge", `A entrada estimada é ${brl(R.fin.entrada)} e a 1ª parcela (SAC) ${brl(R.fin.sac1)}.`],
+        ["Argumentos", [`Com ${virg(P.entrada)}% de entrada e ${R.fin.nm} meses, a parcela no Price fica em ${brl(R.fin.price)}.`, `Renda familiar sugerida pelos bancos: cerca de ${brl(R.fin.rendaMin)}.`, "Encaminhe para simulação no banco antes da proposta: proposta com crédito pré-aprovado negocia melhor."]],
+        ["Dados que ajudam", [`Desembolso inicial (entrada + ITBI e cartório): ${brl(R.fin.desembolsoInicial)}`]],
+        ["Alternativas", ["Entrada maior para reduzir a parcela.", "Uso do FGTS, se o comprador se enquadrar (confirmar regras)."]]] },
+    { titulo: "“Tenho medo de fazer um mau negócio”", relevante: true,
+      partes: [["Preocupação", "Insegurança com documentação, preço e futuro do imóvel."], ["Por que surge", "Compra de alto valor e pouco frequente."],
+        ["Argumentos", [`Score de oportunidade ${R.score.nota ?? "—"}/100 com critérios explicados.`, `${fin === "investimento" ? `Em 10 anos, cenário base: patrimônio de ${brl(R.proj[1].melhor.patrimonio)} contra ${brl(R.proj[1].aplicMelhor)} aplicando.` : `Em 10 anos: comprar ${brl(R.morar[1].comprar)} contra ${brl(R.morar[1].alugar)} alugando e aplicando.`}`, "A imobiliária confere matrícula, certidões e débitos antes da assinatura."]],
+        ["Dados que ajudam", ["Relatório em PDF com as premissas e fontes usadas."]],
+        ["Alternativas", ["Proposta condicionada à análise de documentos e à aprovação do crédito."]]] },
+  ];
+
+  // ---- proprietário
+  const comissaoR = f.preco * comissaoPct / 100;
+  const umPonto = f.preco * 0.01;
+  const vendedor = [
+    { titulo: "“Meu imóvel vale mais do que isso”", relevante: (R.difSim ?? 0) > 0.05 || (R.estBairro?.difBairro ?? 0) > 0.05,
+      partes: [["Argumento do proprietário", "O preço anunciado está abaixo do valor que ele acredita ter."], ["Análise com os dados", [R.difSim != null ? `Preço atual por m²: ${brl(R.m2)}, ${R.difSim > 0 ? pct(R.difSim, 0) + " acima" : pct(-R.difSim, 0) + " abaixo"} dos parecidos.` : "Sem parecidos no anúncio para comparar.", R.estBairro?.medianaBairroM2 ? `Mediana da Nova SP no bairro: ${brl(R.estBairro.medianaBairroM2)}/m² (${R.estBairro.nBairro} imóveis).` : null, conc ? `Posição entre ${conc.total} parecidos da carteira: ${conc.posicao}º mais barato.` : null].filter(Boolean)],
+        ["Argumentos para o corretor", ["Anúncios mostram preço pedido; o comprador compara e negocia sobre os mais baratos da mesma faixa.", "Preço acima do mercado reduz visitas e propostas e costuma terminar em redução maior depois."]],
+        ["Alternativas", ["Combinar uma revisão de preço após um prazo definido (por exemplo, 30 dias) caso não haja visitas.", "Pedir um PTAM para ter um valor técnico independente."]]] },
+    { titulo: "“Não aceito proposta abaixo do anunciado”", relevante: true,
+      partes: [["Argumento do proprietário", "Resistência a qualquer desconto."], ["Análise com os dados", [`Faixa de proposta calculada pelo Radar: da aba “Proposta”.`, R.liq < 50 ? `Índice de revenda de ${R.liq}/100: perfil de venda mais lenta.` : `Índice de revenda de ${R.liq}/100.`]],
+        ["Argumentos para o corretor", ["Compare o desconto com o custo de manter o imóvel parado.", `Cada mês sem vender custa cerca de ${brl(R.fixoMes + R.manutAno / 12)} (condomínio, IPTU e manutenção)${f.condoInformado ? "" : "; condomínio não informado"}.`, `Em ${virg(P.aplicacao)}% ao ano, o dinheiro da venda renderia cerca de ${brl(f.preco * P.aplicacao / 100 / 12)} por mês.`]],
+        ["Alternativas", ["Aceitar desconto com contrapartidas: sinal maior, prazo curto ou pagamento à vista.", "Manter o preço e negociar itens (móveis planejados, prazo de desocupação)."]]] },
+    { titulo: "“Outros imóveis estão anunciados por mais”", relevante: !!(conc && conc.n),
+      partes: [["Argumento do proprietário", "Usa anúncios mais caros como referência."], ["Análise com os dados", [conc ? `Na carteira há ${conc.n} parecidos; ${conc.posicao - 1} estão mais baratos por m² que este.` : "Catálogo não carregado.", "Preço anunciado não é preço de venda: o mercado fecha abaixo do pedido."]],
+        ["Argumentos para o corretor", ["Mostre os parecidos com preço por m² e diferenças (vaga, andar, conservação).", "Consulte as transações de ITBI da Prefeitura para mostrar valores efetivamente pagos na região."]],
+        ["Alternativas", ["Revisar fotos e descrição para destacar diferenciais antes de mexer no preço."]]] },
+    { titulo: "“Quero reduzir a comissão”", relevante: true,
+      partes: [["Argumento do proprietário", "Pede comissão menor que a combinada."], ["Análise com os dados", [`Comissão de ${virg(comissaoPct)}% sobre ${brl(f.preco)} = ${brl(comissaoR)}.`, `Cada 1 ponto de comissão = ${brl(umPonto)}, o mesmo que 1% do preço.`, `Ou seja, 1 ponto de comissão equivale a ${brl(umPonto)} de diferença no preço final negociado.`]],
+        ["Argumentos para o corretor", [`Alcance: o imóvel entra no portfólio da Nova SP, que hoje tem ${CAT.dados ? CAT.dados.total_ativos.toLocaleString("pt-BR") : "milhares de"} imóveis ativos, e nos alertas de oportunidade dos corretores para clientes com esse perfil.`, "Qualificação: o comprador chega com perfil e capacidade de financiamento avaliados.", "Segurança: conferência de documentação, certidões e débitos e condução até a escritura.", "Negociação: a análise de preço e o relatório deste imóvel sustentam o valor diante do comprador."]],
+        ["Estratégias para justificar a comissão", ["Apresente o relatório deste imóvel (botão “Gerar relatório em PDF”) como prova do trabalho técnico.", "Liste os serviços incluídos no contrato com a Nova SP (confirme os que se aplicam: fotos, divulgação, visitas, triagem, documentação)."]],
+        ["Alternativas sem comprometer a remuneração", ["Comissão integral com exclusividade por prazo definido.", "Manter a comissão e oferecer um plano de divulgação reforçado.", "Se houver concessão, condicioná-la a um preço de venda mínimo acordado."]]] },
+    { titulo: "“Preciso vender rápido, mas não baixo o preço”", relevante: (R.difSim ?? 0) > 0 || R.liq < 55,
+      partes: [["Argumento do proprietário", "Quer prazo curto mantendo o preço."], ["Análise com os dados", [R.difSim != null ? `Preço por m² ${R.difSim > 0 ? pct(R.difSim, 0) + " acima" : pct(-R.difSim, 0) + " abaixo"} dos parecidos.` : "Sem parecidos para comparar.", `Índice de revenda: ${R.liq}/100.`, diasCat != null ? `No catálogo da Nova SP desde ${dataBR(noCat.primeira_vez)} (${diasCat} dias; o catálogo começou em 27/10/2026).` : "Tempo de anúncio: confirmar."]],
+        ["Argumentos para o corretor", ["Velocidade de venda depende de preço competitivo dentro da faixa dos parecidos.", conc && conc.maisBaratos.length ? `O parecido mais barato da carteira em ${f.bairro} está a ${brl(conc.maisBaratos[0].preco_venda / conc.maisBaratos[0].area)}/m² (Ref. ${conc.maisBaratos[0].ref}); este está a ${brl(R.m2)}/m².` : "Compare com os parecidos mais baratos."]],
+        ["Alternativas", ["Ajuste pequeno de preço com prazo combinado.", "Aceitar propostas com financiamento pré-aprovado para encurtar o fechamento."]]] },
+    { titulo: "“Não entendo o que a imobiliária faz”", relevante: false,
+      partes: [["Argumento do proprietário", "Não vê valor no serviço."], ["Análise com os dados", ["O Radar registra análise de preço, comparação com o bairro e alertas de clientes compatíveis."]],
+        ["Argumentos para o corretor", ["Mostre o relatório do imóvel, a comparação com parecidos e o número de clientes com alerta compatível (em Meus alertas).", "Explique as etapas: preço, divulgação, visitas, proposta, documentação e escritura."]],
+        ["Alternativas", ["Combinar relatórios periódicos de visitas e propostas para dar transparência."]]] },
+  ];
+  return { args, comprador: comprador.sort((a, b) => b.relevante - a.relevante), vendedor: vendedor.sort((a, b) => b.relevante - a.relevante) };
+}
+document.querySelectorAll("[data-neg-aba]").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-neg-aba]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  document.querySelectorAll("[data-neg-painel]").forEach((p) => p.classList.toggle("oculto", p.dataset.negPainel !== b.dataset.negAba));
+}));
+
+// ================= MANUTENÇÃO ESTIMADA =================
+// Antes: 0,4% do preço por ano (hipótese genérica, sem fonte). Agora: custo de reconstrução da unidade (área × CUB)
+// × taxa anual do tipo × fator de idade × fator de conservação. Continua sendo estimativa, não dado medido.
+const FAT_PADRAO = { baixo: 0.82, normal: 1, alto: 1.21, "": 1 }; // proporções entre padrões do CUB-SP (R-1, set/2026)
+const FAT_CONS = { otimo: 0.8, bom: 1, regular: 1.3, reforma: 1.6, "": 1 };
+const NOME_CONS = { otimo: "novo ou reformado", bom: "bom", regular: "regular", reforma: "precisa de reforma", "": "não informado" };
+function fatorIdade(idade) { return idade == null ? 1 : idade <= 5 ? 0.6 : idade <= 15 ? 1 : idade <= 30 ? 1.3 : 1.6; }
+function manutencaoEstimada(f, P) {
+  const casa = /casa|sobrado/i.test(f.tipo);
+  const idade = f.ano ? Math.max(0, new Date().getFullYear() - f.ano) : null;
+  const reconstrucao = f.area * (P.cub || 0) * FAT_PADRAO[f.padrao || ""];
+  const taxa = (casa ? P.manutCasa : P.manutApto) / 100;
+  const fi = fatorIdade(idade), fc = FAT_CONS[f.conservacao || ""];
+  const anual = reconstrucao * taxa * fi * fc;
+  const avisos = [];
+  if (idade == null) avisos.push("idade não informada (fator neutro 1,0)");
+  if (!f.conservacao) avisos.push("conservação não informada (fator neutro 1,0)");
+  if (!f.padrao) avisos.push("padrão de acabamento não informado (considerado normal)");
+  return { anual, reconstrucao, taxa, fi, fc, idade, casa, avisos,
+    explicacao: `${f.area.toLocaleString("pt-BR")} m² × ${brl(P.cub)}/m² (CUB R8-N)${f.padrao && f.padrao !== "normal" ? ` × ${virg(FAT_PADRAO[f.padrao])} (padrão ${f.padrao === "alto" ? "alto" : "simples"})` : ""} = ${brl(reconstrucao)} de custo de reconstrução; × ${virg(taxa * 100)}% ao ano (${casa ? "casa" : "apartamento"}) × ${virg(fi)} (idade: ${idade == null ? "não informada" : idade + " anos"}) × ${virg(fc)} (conservação: ${NOME_CONS[f.conservacao || ""]}) = ${brl(anual)} por ano.` };
+}
+
 // ================= SCORE DE OPORTUNIDADE =================
-// Critérios e pesos (somam 100). Critério sem dados sai do cálculo e o peso é redistribuído entre os demais,
-// com aviso. Com menos de 60% do peso avaliado, a classificação vira "dados insuficientes".
-const CRITERIOS_SCORE = [
-  { id: "preco", nome: "Preço e precificação", peso: 25, como: "Preço por m² comparado à mediana dos imóveis parecidos do anúncio e à mediana do portfólio da Nova SP no bairro. Nota 60 quando está na mediana; sobe até 100 com 16% abaixo e cai a 0 com 24% acima." },
-  { id: "local", nome: "Localização", peso: 15, como: "Distância do metrô (até 400 m = 100; até 800 m = 80; até 1,2 km = 55; acima = 30) e quantidade de serviços a até 800 m informados no anúncio (escola, hospital, parque, mercado, ônibus etc.)." },
-  { id: "venda", nome: "Potencial de venda (liquidez)", peso: 15, como: "Índice de facilidade de revenda já usado pelo Radar: tipo do imóvel, metrô, vaga, faixa de preço, tamanho e condomínio." },
-  { id: "locacao", nome: "Potencial de locação", peso: 15, como: "Aluguel bruto anual ÷ preço. Usa a mediana de aluguel por m² dos imóveis da Nova SP para alugar no mesmo bairro e tipo (mínimo de 3); sem amostra, usa a média da cidade (FipeZAP). 2,5% ao ano = 0; 7% ou mais = 100." },
-  { id: "valoriza", nome: "Potencial de valorização", peso: 10, como: "Exige série histórica de preços por bairro. Ainda não temos dados confiáveis; o critério fica fora até o catálogo acumular histórico." },
-  { id: "carac", nome: "Características do imóvel", peso: 10, como: "Área por quarto (28 m² ou mais = 100; 22 a 28 = 70; menos = 40), vaga de garagem, suíte e itens de lazer do condomínio. Conservação não é avaliada porque o anúncio não informa." },
-  { id: "riscos", nome: "Riscos e custos", peso: 10, como: "Começa em 100 e desconta: condomínio acima de R$ 15/m² (−20) ou R$ 20/m² (−40); condomínio + IPTU acima de 45% do aluguel estimado (−25); IPTU anual acima de 1% do preço (−15); preço mais de 10% acima dos parecidos (−20)." },
-];
-function calcularScore({ f, difSim, sims, estBairro, liq, condoM2, fixoMes, alugMes }) {
-  const r = {}; const add = (id, nota, txt) => (r[id] = { nota: nota == null ? null : clamp(Math.round(nota), 0, 100), txt });
-  // preço
-  const difs = []; const fontes = [];
+// Cada finalidade tem critérios e pesos próprios (somam 100). Critério sem dados sai do cálculo e o peso é
+// redistribuído, com aviso. Abaixo de 60% do peso avaliado: "dados insuficientes". Abaixo de 75%: nota limitada a 74.
+const CRITERIOS = {
+  moradia: [
+    { id: "preco", nome: "Precificação", peso: 20, como: "Preço por m² contra a mediana dos parecidos do anúncio e do portfólio da Nova SP no bairro. Na mediana = 60; 16% abaixo = 100; 24% acima = 0." },
+    { id: "local", nome: "Localização e transporte", peso: 15, como: "Distância do metrô: até 400 m = 100; até 800 m = 80; até 1,2 km = 55; acima = 30." },
+    { id: "infra", nome: "Infraestrutura e serviços próximos", peso: 10, como: "Serviços a até 800 m informados no anúncio (escola, hospital, parque, mercado, ônibus etc.): 4 ou mais = 100; 3 = 80; 2 = 65; 1 = 50; nenhum = 35." },
+    { id: "distrib", nome: "Características e distribuição", peso: 15, como: "Área por quarto (28 m² ou mais = 100; 22 a 28 = 70; menos = 40), vaga, suíte e relação banheiros/quartos." },
+    { id: "conserv", nome: "Estado de conservação", peso: 10, como: "Novo ou reformado = 100; bom = 75; regular = 45; precisa de reforma = 20. Só conta se informado (anúncio ou campo do formulário)." },
+    { id: "difer", nome: "Diferenciais", peso: 5, como: "Itens de lazer do condomínio e diferenciais citados no anúncio (varanda, planejados, vista etc.): 4 ou mais = 100; 2 a 3 = 75; 1 = 55." },
+    { id: "liquidez", nome: "Revenda e liquidez", peso: 15, como: "Índice de facilidade de revenda do Radar: tipo, metrô, vaga, faixa de preço, tamanho e condomínio." },
+    { id: "custos", nome: "Custos de morar", peso: 10, como: "Começa em 100 e desconta: condomínio acima de R$ 15/m² (−20) ou R$ 20/m² (−40); IPTU anual acima de 1% do preço (−15); manutenção estimada acima de R$ 25/m² ao ano (−15)." },
+  ],
+  investimento: [
+    { id: "preco", nome: "Precificação", peso: 15, como: "Mesmo cálculo da moradia: preço por m² contra parecidos e bairro." },
+    { id: "rentab", nome: "Rentabilidade líquida", peso: 20, como: "Renda líquida anual da melhor estratégia ÷ investimento total, comparada à aplicação líquida: igual à aplicação = 70; metade = 35; 1,3 vez ou mais = 100." },
+    { id: "locacao", nome: "Potencial de locação", peso: 15, como: "Aluguel bruto anual ÷ preço, com a mediana de aluguel da Nova SP no bairro (mínimo de 3 imóveis) ou a média da cidade. 2,5% = 0; 7% ou mais = 100." },
+    { id: "demanda", nome: "Demanda por aluguel na região", peso: 10, como: "Noites ocupadas por ano dos anúncios de temporada da região (Inside Airbnb): 200 ou mais = 100; 150 = 80; 100 = 55; 60 = 30. Não há dado público de demanda para aluguel tradicional." },
+    { id: "valoriza", nome: "Potencial de valorização", peso: 10, como: "Exige série histórica de preços por bairro. Ainda sem dados confiáveis; fica fora até o catálogo acumular histórico." },
+    { id: "liquidez", nome: "Liquidez e revenda", peso: 10, como: "Índice de facilidade de revenda do Radar." },
+    { id: "custosop", nome: "Custos operacionais", peso: 10, como: "(Condomínio + IPTU + manutenção) ÷ aluguel estimado: até 25% = 100; 40% = 60; 60% ou mais = 10." },
+    { id: "riscos", nome: "Riscos", peso: 10, como: "Começa em 100 e desconta: preço mais de 10% acima dos parecidos (−25); melhor renda depende de curta temporada (−15); poucos anúncios de temporada na amostra (−15); condomínio acima de R$ 20/m² (−20); precisa de reforma (−20)." },
+  ],
+};
+function calcularScore(fin, X) {
+  const { f, difSim, sims, estBairro, liq, condoM2, alugMes, melhor, aplicLiq, ref, manutAno } = X;
+  // qual: 1 = dado específico do imóvel/bairro; 0,5 = só média da cidade (conta metade para a cobertura)
+  const r = {}; const add = (id, nota, txt, qual = 1) => (r[id] = { nota: nota == null ? null : clamp(Math.round(nota), 0, 100), txt, qual });
+  const media = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  // preço (comum)
+  const difs = [], fontes = [];
   if (difSim != null) { difs.push(difSim); fontes.push(`${difSim > 0 ? "+" : ""}${pct(difSim, 0)} vs. ${sims.length} parecidos do anúncio`); }
   if (estBairro?.difBairro != null) { difs.push(estBairro.difBairro); fontes.push(`${estBairro.difBairro > 0 ? "+" : ""}${pct(estBairro.difBairro, 0)} vs. mediana de ${estBairro.nBairro} imóveis da Nova SP no bairro`); }
-  if (difs.length) { const d = difs.reduce((a, b) => a + b, 0) / difs.length; add("preco", 60 - d * 250, `Preço por m² ${brl(f.preco / f.area)}: ${fontes.join("; ")}.`); }
+  if (difs.length) add("preco", 60 - media(difs) * 250, `Preço por m² ${brl(f.preco / f.area)}: ${fontes.join("; ")}.`);
   else add("preco", null, "Sem imóveis comparáveis (parecidos do anúncio ou amostra do bairro).");
-  // localização
   const pois = IMOVEL.pois || [];
-  const partes = []; const notasL = [];
-  if (f.metro != null) { notasL.push(f.metro <= 400 ? 100 : f.metro <= 800 ? 80 : f.metro <= 1200 ? 55 : 30); partes.push(`metrô a ${f.metro} m`); }
-  if (pois.length) { const n = pois.filter((p) => p.metros <= 800 && !/metr/i.test(p.tipo)).length; notasL.push(n >= 4 ? 100 : n === 3 ? 80 : n === 2 ? 65 : n === 1 ? 50 : 35); partes.push(`${n} serviço(s) a até 800 m`); }
-  add("local", notasL.length ? notasL.reduce((a, b) => a + b, 0) / notasL.length : null, notasL.length ? partes.join(", ") + "." : "Distância do metrô e pontos de interesse não informados.");
-  // venda
-  add("venda", liq, `Índice de facilidade de revenda: ${liq} de 100.`);
-  // locação
+  const nServ = pois.filter((p) => p.metros <= 800 && !/metr/i.test(p.tipo)).length;
   const alugBairro = estBairro && /bairro/.test(estBairro.fonteAluguel || "") ? estBairro.aluguelEst : null;
   const alug = alugBairro || alugMes;
-  const y = alug * 12 / f.preco;
-  add("locacao", ((y - 0.025) / 0.045) * 100, `Aluguel estimado ${brl(alug)}/mês (${alugBairro ? estBairro.fonteAluguel : "média da cidade, FipeZAP; menos preciso"}): ${pct(y)} ao ano bruto.`);
-  // valorização
-  add("valoriza", null, "Sem série histórica confiável por bairro; critério não avaliado.");
-  // características
-  const nc = []; const pc2 = [];
-  if (f.quartos) { const apq = f.area / f.quartos; nc.push(apq >= 28 ? 100 : apq >= 22 ? 70 : 40); pc2.push(`${Math.round(apq)} m² por quarto`); }
-  if ($("f-vagas").value.trim() !== "") { nc.push(f.vagas >= 1 ? 100 : 30); pc2.push(f.vagas >= 1 ? `${f.vagas} vaga(s)` : "sem vaga"); }
-  if (IMOVEL.suites != null) { nc.push(IMOVEL.suites >= 1 ? 100 : 60); pc2.push(IMOVEL.suites >= 1 ? `${IMOVEL.suites} suíte(s)` : "sem suíte"); }
-  if ((IMOVEL.lazer || []).length) { nc.push(IMOVEL.lazer.length >= 3 ? 100 : 70); pc2.push(`${IMOVEL.lazer.length} item(ns) de lazer`); }
-  add("carac", nc.length ? nc.reduce((a, b) => a + b, 0) / nc.length : null, nc.length ? pc2.join(", ") + "." : "Quartos, vagas e diferenciais não informados.");
-  // riscos e custos
-  let rc = 100; const pr = [];
-  if (f.condoInformado) { if (condoM2 > 20) { rc -= 40; pr.push(`condomínio de ${brl(condoM2, 2)}/m²`); } else if (condoM2 > 15) { rc -= 20; pr.push(`condomínio de ${brl(condoM2, 2)}/m²`); } }
-  if ((f.condoInformado || f.iptuInformado) && alug && fixoMes / alug > 0.45) { rc -= 25; pr.push(`condomínio + IPTU = ${pct(fixoMes / alug, 0)} do aluguel estimado`); }
-  if (f.iptuInformado && f.iptu * 12 / f.preco > 0.01) { rc -= 15; pr.push("IPTU alto para o preço"); }
-  if (difSim != null && difSim > 0.1) { rc -= 20; pr.push("preço mais de 10% acima dos parecidos"); }
-  add("riscos", f.condoInformado || f.iptuInformado ? rc : null, f.condoInformado || f.iptuInformado ? (pr.length ? "Descontos: " + pr.join("; ") + "." : "Sem custos ou riscos acima do normal nos dados disponíveis.") : "Condomínio e IPTU não informados; custos não avaliados.");
+  const fonteAlug = alugBairro ? estBairro.fonteAluguel : "média da cidade, FipeZAP; menos preciso";
+  add("liquidez", liq, `Índice de facilidade de revenda: ${liq} de 100.`);
 
-  const avaliados = CRITERIOS_SCORE.filter((c) => r[c.id].nota != null);
+  if (fin === "moradia") {
+    add("local", f.metro != null ? (f.metro <= 400 ? 100 : f.metro <= 800 ? 80 : f.metro <= 1200 ? 55 : 30) : null, f.metro != null ? `Metrô${IMOVEL.metroEstacao ? " " + IMOVEL.metroEstacao : ""} a ${f.metro} m.` : "Distância do metrô não informada.");
+    add("infra", pois.length ? (nServ >= 4 ? 100 : nServ === 3 ? 80 : nServ === 2 ? 65 : nServ === 1 ? 50 : 35) : null, pois.length ? `${nServ} serviço(s) a até 800 m: ${pois.filter((p) => p.metros <= 800 && !/metr/i.test(p.tipo)).slice(0, 4).map((p) => `${p.tipo.toLowerCase()} a ${p.metros} m`).join(", ") || "nenhum"}.` : "O anúncio não informou pontos de interesse.");
+    const nd = [], td = [];
+    if (f.quartos) { const apq = f.area / f.quartos; nd.push(apq >= 28 ? 100 : apq >= 22 ? 70 : 40); td.push(`${Math.round(apq)} m² por quarto`); }
+    if ($("f-vagas").value.trim() !== "") { nd.push(f.vagas >= 1 ? 100 : 30); td.push(f.vagas >= 1 ? `${f.vagas} vaga(s)` : "sem vaga"); }
+    if (IMOVEL.suites != null) { nd.push(IMOVEL.suites >= 1 ? 100 : 60); td.push(IMOVEL.suites >= 1 ? `${IMOVEL.suites} suíte(s)` : "sem suíte"); }
+    if (f.banheiros && f.quartos) { nd.push(f.banheiros >= f.quartos ? 100 : f.banheiros >= Math.ceil(f.quartos / 2) ? 70 : 45); td.push(`${f.banheiros} banheiro(s)`); }
+    add("distrib", nd.length ? media(nd) : null, nd.length ? td.join(", ") + "." : "Quartos, vagas e banheiros não informados.");
+    const cn = { otimo: 100, bom: 75, regular: 45, reforma: 20 }[f.conservacao];
+    add("conserv", cn ?? null, cn != null ? `Conservação: ${NOME_CONS[f.conservacao]}${IMOVEL.conservacaoTrecho ? ` (anúncio: “${IMOVEL.conservacaoTrecho}”)` : ""}.` : "Não informado no anúncio. Avalie na visita e preencha o campo para incluir no score.");
+    const difer = [...(IMOVEL.lazer || []), ...(IMOVEL.diferenciais || [])];
+    add("difer", difer.length ? (difer.length >= 4 ? 100 : difer.length >= 2 ? 75 : 55) : null, difer.length ? difer.slice(0, 6).join(", ") + "." : "Nenhum diferencial informado no anúncio.");
+    let c = 100; const pc3 = [];
+    if (f.condoInformado) { if (condoM2 > 20) { c -= 40; pc3.push(`condomínio de ${brl(condoM2, 2)}/m²`); } else if (condoM2 > 15) { c -= 20; pc3.push(`condomínio de ${brl(condoM2, 2)}/m²`); } }
+    if (f.iptuInformado && f.iptu * 12 / f.preco > 0.01) { c -= 15; pc3.push("IPTU alto para o preço"); }
+    if (manutAno / f.area > 25) { c -= 15; pc3.push(`manutenção estimada de ${brl(manutAno / f.area)}/m² ao ano`); }
+    add("custos", f.condoInformado || f.iptuInformado ? c : null, f.condoInformado || f.iptuInformado ? (pc3.length ? "Descontos: " + pc3.join("; ") + "." : "Condomínio, IPTU e manutenção dentro do comum.") : "Condomínio e IPTU não informados.");
+  } else {
+    const ratio = aplicLiq > 0 ? melhor.yield / aplicLiq : null;
+    add("rentab", ratio == null ? null : ratio >= 1.3 ? 100 : ratio >= 1 ? 70 + (ratio - 1) * 100 : Math.max(0, ratio * 70), `Melhor estratégia (${nomeEstr(melhor)}): ${pct(melhor.yield)} líquido ao ano contra ${pct(aplicLiq)} da aplicação.${alugBairro ? "" : " Aluguel pela média da cidade: conta pela metade na cobertura."}`, alugBairro ? 1 : 0.5);
+    const y = alug * 12 / f.preco;
+    add("locacao", ((y - 0.025) / 0.045) * 100, `Aluguel estimado ${brl(alug)}/mês (${fonteAlug}): ${pct(y)} ao ano bruto.`, alugBairro ? 1 : 0.5);
+    const noites = ref?.n ? ref.noites : null;
+    add("demanda", noites != null ? (noites >= 200 ? 100 : noites >= 150 ? 80 + (noites - 150) * 0.4 : noites >= 100 ? 55 + (noites - 100) * 0.5 : noites >= 60 ? 30 + (noites - 60) * 0.625 : 15) : null, noites != null ? `Temporada na região: cerca de ${Math.round(noites)} noites ocupadas por ano (${ref.n} anúncios, ${ref.nivel}).` : "Dados de temporada da região ainda não carregados.");
+    add("valoriza", null, "Sem série histórica confiável por bairro; critério não avaliado.");
+    if (f.condoInformado || f.iptuInformado) {
+      const cr = (f.condo + f.iptu + manutAno / 12) / alug;
+      add("custosop", cr <= 0.25 ? 100 : cr <= 0.4 ? 100 - (cr - 0.25) / 0.15 * 40 : cr <= 0.6 ? 60 - (cr - 0.4) / 0.2 * 50 : 10, `Condomínio, IPTU e manutenção = ${pct(cr, 0)} do aluguel estimado.`);
+    } else add("custosop", null, "Condomínio e IPTU não informados.");
+    let rk = 100; const pr = [];
+    if (difSim != null && difSim > 0.1) { rk -= 25; pr.push("preço mais de 10% acima dos parecidos"); }
+    if (melhor.id === "curta") { rk -= 15; pr.push("melhor renda depende de curta temporada (regras do condomínio)"); }
+    if (ref?.n != null && ref.n < 30) { rk -= 15; pr.push(`só ${ref.n} anúncios de temporada na amostra`); }
+    if (f.condoInformado && condoM2 > 20) { rk -= 20; pr.push("condomínio alto"); }
+    if (f.conservacao === "reforma") { rk -= 20; pr.push("precisa de reforma"); }
+    const temDadoRisco = difSim != null || f.condoInformado || ref?.n || f.conservacao;
+    add("riscos", temDadoRisco ? rk : null, !temDadoRisco ? "Sem comparáveis, condomínio, conservação ou dados de temporada para avaliar riscos." : pr.length ? "Descontos: " + pr.join("; ") + "." : "Nenhum risco acima do normal nos dados disponíveis.");
+  }
+  const lista = CRITERIOS[fin];
+  const avaliados = lista.filter((c) => r[c.id].nota != null);
   const pesoAval = avaliados.reduce((a, c) => a + c.peso, 0);
-  const nota = pesoAval ? Math.round(avaliados.reduce((a, c) => a + c.peso * r[c.id].nota, 0) / pesoAval) : null;
-  const itens = CRITERIOS_SCORE.map((c) => ({ ...c, ...r[c.id], pesoEf: r[c.id].nota != null && pesoAval ? (c.peso / pesoAval) * 100 : 0, pontos: r[c.id].nota != null && pesoAval ? (c.peso / pesoAval) * r[c.id].nota : null }));
-  const cobertura = pesoAval / 100;
+  let nota = pesoAval ? Math.round(avaliados.reduce((a, c) => a + c.peso * r[c.id].nota, 0) / pesoAval) : null;
+  const cobertura = avaliados.reduce((a, c) => a + c.peso * r[c.id].qual, 0) / 100;
+  let teto = false;
+  if (nota != null && cobertura < 0.75 && nota > 74) { nota = 74; teto = true; }
+  const itens = lista.map((c) => ({ ...c, ...r[c.id], pontos: r[c.id].nota != null && pesoAval ? (c.peso / pesoAval) * r[c.id].nota : null }));
   const classe = nota == null || cobertura < 0.6 ? "Dados insuficientes para classificar" : nota >= 75 ? "Oportunidade forte" : nota >= 60 ? "Boa oportunidade" : nota >= 45 ? "Oportunidade moderada" : "Oportunidade fraca";
   const nivel = classe.startsWith("Dados") ? "neu" : nota >= 60 ? "bom" : nota >= 45 ? "medio" : "fraco";
-  return { nota, classe, nivel, itens, cobertura };
+  return { fin, nota, classe, nivel, itens, cobertura, teto };
 }
 
 function mediana(a) { const s = [...a].sort((x, y) => x - y), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
@@ -1097,7 +1297,10 @@ function desenhar(R) {
   $("score-arco").style.stroke = cor; $("score-arco").style.strokeDashoffset = String(314.16 * (1 - (S.nota || 0) / 100));
   $("score-num").textContent = S.nota ?? "–";
   $("score-classe").textContent = S.classe;
-  $("score-txt").textContent = `${S.nota ?? "—"} de 100. ${Math.round(S.cobertura * 100)}% do peso avaliado com dados disponíveis.`;
+  const outra = investir ? R.scores.moradia : R.scores.investimento;
+  $("score-fin").textContent = investir ? "investimento" : "moradia";
+  $("score-sub").textContent = investir ? "Qualidade do imóvel como investimento: preço, renda, demanda, custos, liquidez e riscos." : "Qualidade do imóvel para quem vai morar: preço, localização, serviços, distribuição, conservação e custos.";
+  $("score-txt").textContent = `${S.nota ?? "—"} de 100. ${Math.round(S.cobertura * 100)}% do peso avaliado com dados disponíveis.${S.teto ? " Nota limitada a 74 porque faltam dados importantes." : ""} Na visão de ${investir ? "moradia" : "investimento"}: ${outra.nota ?? "—"} (${outra.classe.toLowerCase()}).`;
   $("score-fatores").innerHTML = S.itens.map((x) => x.nota == null
     ? `<li><b>${esc(x.nome)} <span class="neu" style="font-weight:400">· peso ${x.peso}%</span></b><span class="pts neu">sem dados</span><small>${esc(x.txt)} Peso redistribuído entre os demais critérios.</small></li>`
     : `<li><b>${esc(x.nome)} <span class="neu" style="font-weight:400">· peso ${x.peso}%</span></b><span class="pts ${x.nota >= 65 ? "pos" : x.nota <= 40 ? "neg" : "neu"}">nota ${x.nota}</span><small>${esc(x.txt)} Contribui com ${virg(x.pontos.toFixed(1))} pontos.</small></li>`).join("");
@@ -1105,11 +1308,11 @@ function desenhar(R) {
   S.itens.filter((x) => x.nota == null).forEach((x) => lim.push(`${x.nome}: ${x.txt}`));
   if (!f.condoInformado) lim.push("Condomínio não informado: custos podem estar subestimados.");
   if (!f.iptuInformado) lim.push("IPTU não informado.");
-  lim.push("Conservação e necessidade de reforma não são avaliadas: o anúncio não traz essa informação. Confira na visita.");
+  if (!f.conservacao) lim.push("Conservação e necessidade de reforma não informadas: confira na visita e preencha o campo “Estado de conservação”.");
   if (investir && !ref.n) lim.push("Dados de temporada da região ainda não carregados; usada a média da cidade.");
   $("score-limites").classList.remove("oculto");
   $("score-limites").innerHTML = `<b>Limitações e dados ausentes</b><ul>${lim.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
-  $("score-metodo").innerHTML = `<p style="margin:0 0 6px">Nota final = média ponderada das notas (0 a 100) de cada critério. Classificação: 75 ou mais, oportunidade forte; 60 a 74, boa; 45 a 59, moderada; abaixo de 45, fraca. O score não usa a comparação entre comprar e alugar nem a projeção de investimento.</p><ul style="margin:0;padding-left:18px">${CRITERIOS_SCORE.map((c) => `<li><b>${esc(c.nome)} (${c.peso}%)</b>: ${esc(c.como)}</li>`).join("")}</ul>`;
+  $("score-metodo").innerHTML = `<p style="margin:0 0 6px">Nota final = média ponderada das notas (0 a 100) de cada critério. Classificação: 75 ou mais, oportunidade forte; 60 a 74, boa; 45 a 59, moderada; abaixo de 45, fraca. Critério sem dados sai do cálculo e o peso vai para os demais; com menos de 60% do peso avaliado não há classificação, e com menos de 75% a nota fica limitada a 74. Moradia e investimento têm critérios e pesos diferentes, por isso o mesmo imóvel pode ter notas diferentes. A comparação entre comprar e alugar não entra no score.</p><ul style="margin:0;padding-left:18px">${CRITERIOS[FINALIDADE].map((c) => `<li><b>${esc(c.nome)} (${c.peso}%)</b>: ${esc(c.como)}</li>`).join("")}</ul>`;
 
   // conclusão da finalidade escolhida
   const p10 = proj[1], m10 = morar[1];
@@ -1183,7 +1386,7 @@ function desenhar(R) {
   $("estrategias").innerHTML = ests.map((e) => {
     const tag = e === melhor ? '<span class="chip verde">Melhor retorno</span>' : e.yield < 0 ? '<span class="chip vermelho">Dá prejuízo</span>' : e.yield < R.aplicLiq * 0.6 ? '<span class="chip ambar">Retorno baixo</span>' : "";
     return `<div class="estr ${e === melhor ? "melhor" : ""}"><h3><span>${esc(e.nome)}</span>${tag}</h3>
-      <dl><dt>Sobra no bolso por mês</dt><dd class="forte">${brl(e.liq / 12)}</dd>
+      <dl>${e.id === "medio" ? `<dt>Renda líquida no ano</dt><dd class="forte">${brl(e.liq)}</dd>` : `<dt>Sobra no bolso por mês</dt><dd class="forte">${brl(e.liq / 12)}</dd>`}
       <dt>Rentabilidade líquida ao ano</dt><dd>${pct(e.yield)}</dd>
       ${e.linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}
       ${e.extra ? `<dt>Investimento extra em mobília</dt><dd>${brl(e.extra)}</dd>` : ""}</dl>
@@ -1205,7 +1408,8 @@ function desenhar(R) {
     <tr><td><b>Total para comprar</b></td><td><b>${brl(R.investBase)}</b></td></tr>
     <tr class="so-inv"><td>Mobiliar e equipar (temporada ou médio prazo)</td><td>${f.mobiliado ? "já mobiliado" : brl(R.mobilia)}</td></tr>
     <tr><td>Condomínio + IPTU por mês</td><td>${f.condoInformado || f.iptuInformado ? brl(R.fixoMes) : "não informado"}</td></tr>
-    <tr><td>Manutenção estimada por mês</td><td>${brl(R.manutAno / 12)}</td></tr></tbody>`;
+    <tr><td>Manutenção estimada por mês <span class="chip ambar" style="margin-left:4px">estimativa</span></td><td>${brl(R.manutAno / 12)}</td></tr></tbody>`;
+  $("manut-explica").innerHTML = `<b>Como a manutenção é estimada.</b> ${esc(R.MAN.explicacao)} Cobre pintura, hidráulica, elétrica, pisos e reparos da unidade${R.MAN.casa ? ", além de telhado, fachada e áreas externas" : "; as áreas comuns já são pagas no condomínio"}. ${R.MAN.avisos.length ? "Dados que faltam: " + esc(R.MAN.avisos.join("; ")) + ". " : ""}É uma estimativa: não é orçamento nem dado medido, e não inclui reforma, que deve ser orçada à parte.`;
 
   // riscos
   $("liq-num").innerHTML = `<div class="ind"><b>${R.liq} de 100</b><span>facilidade de revenda (indicativo)</span></div><div class="ind"><b>${pct(R.trad.recMes * 12 / f.preco)}</b><span>aluguel bruto ao ano sobre o preço</span></div>`;
@@ -1221,25 +1425,13 @@ function desenhar(R) {
   riscos.push(["baixo", "Confira matrícula atualizada, certidões do vendedor e débitos de condomínio e IPTU antes de assinar."]);
   $("riscos").innerHTML = riscos.map(([n, t]) => `<li><span class="ponto ${n}" aria-hidden="true"></span><span><span class="oculto">${n === "alto" ? "Risco alto: " : n === "medio" ? "Risco médio: " : "Risco baixo: "}</span>${esc(t)}</span></li>`).join("");
 
-  // corretor
-  const args = [];
-  if (R.difSim != null && R.difSim < 0) args.push(`Preço por m² ${pct(-R.difSim, 0)} abaixo dos parecidos da própria carteira.`);
-  if (f.metro != null && f.metro <= 800) args.push(`${f.metro} m do metrô: demanda constante para morar e para alugar.`);
-  if (investir) args.push(`Pode render ${brl(melhor.liq / 12)} por mês líquidos em ${nomeEstr(melhor)}.`);
-  else args.push(`Parcela inicial de ${brl(fin.sac1)} no SAC com ${virg(R.P.entrada)}% de entrada.`);
-  args.push(`Em 10 anos, cenário base: imóvel vale ${brl(proj[1].valorImovel)}.`);
-  if (R.liq >= 60) args.push("Perfil de alta liquidez: fácil de revender se o cliente precisar.");
-  $("c-args").innerHTML = args.map((x) => `<li>${esc(x)}</li>`).join("");
-  const obj = investir ? [
-    ["“O CDI rende mais.”", `Hoje a aplicação líquida rende ${pct(R.aplicLiq)} ao ano. O imóvel soma renda (${pct(melhor.yield)}) e valorização; no cenário base, em 10 anos o patrimônio fica ${proj[1].melhor.patrimonio >= proj[1].aplicMelhor ? "acima" : "abaixo"} da aplicação.`],
-    ["“O condomínio é caro.”", `São ${brl(R.fixoMes)} por mês com IPTU; no aluguel tradicional quem paga é o inquilino. ${R.condoM2 > 18 ? "É acima da média por m², vale negociar preço." : "Por m², está dentro do comum."}`],
-    ["“Será que alugo rápido?”", `Use a distância do metrô e o aluguel estimado de ${brl(R.alugMes)}; a premissa já considera ${R.P.vacancia} mês vazio por ano.`],
-  ] : [
-    ["“A parcela pesa no orçamento.”", `No Price a parcela fica fixa em ${brl(fin.price)}; no SAC começa em ${brl(fin.sac1)} e cai até ${brl(fin.sacN)}. Uma entrada maior reduz as duas.`],
-    ["“Prefiro continuar alugando.”", `Em 10 anos: comprar ${brl(m10.comprar)} contra ${brl(m10.alugar)} alugando e aplicando. Mostre a tabela e ajuste as premissas com o cliente.`],
-    ["“O condomínio é caro.”", `São ${brl(R.fixoMes)} por mês com IPTU. ${R.condoM2 > 18 ? "É acima da média por m², vale negociar preço." : "Por m², está dentro do comum."}`],
-  ];
-  $("c-obj").innerHTML = obj.map(([q, a]) => `<li><b>${esc(q)}</b> ${esc(a)}</li>`).join("");
+  // negociação (argumentos do imóvel, comprador e proprietário)
+  const NEG = gerarNegociacao(R);
+  $("c-args").innerHTML = NEG.args.map((x) => `<li>${esc(x.t)}<small>Fonte: ${esc(x.f)}</small></li>`).join("") || "<li>Sem dados suficientes para argumentos específicos. Complete os campos do imóvel.</li>";
+  const blocoNeg = (x) => `<article class="neg-item"><h3>${esc(x.titulo)}${x.relevante ? '<span class="chip ambar">relevante neste imóvel</span>' : ""}</h3>
+    <dl>${x.partes.map(([rot, val]) => `<div><dt>${esc(rot)}</dt><dd>${Array.isArray(val) ? `<ul>${val.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : esc(val)}</dd></div>`).join("")}</dl></article>`;
+  $("c-comprador").innerHTML = NEG.comprador.map(blocoNeg).join("");
+  $("c-vendedor").innerHTML = NEG.vendedor.map(blocoNeg).join("");
   const alvo = R.medSim ? Math.min(f.preco, R.medSim * f.area) : f.preco;
   const abertura = Math.round(Math.min(f.preco * 0.94, alvo * 0.98) / 1000) * 1000;
   const teto = Math.round(Math.min(f.preco, Math.max(alvo, f.preco * 0.97)) / 1000) * 1000;
@@ -1277,7 +1469,7 @@ function htmlFuturo(R, investir) {
 
 // ================= compartilhar análise =================
 function salvarNoLink(f) {
-  const dados = { ...f, fin: FINALIDADE, ref: IMOVEL.ref, url: IMOVEL.url, sim: IMOVEL.similares, lat: IMOVEL.lat, lng: IMOVEL.lng, foto: IMOVEL.foto, pois: IMOVEL.pois, suites: IMOVEL.suites, lazer: IMOVEL.lazer, est: IMOVEL.metroEstacao };
+  const dados = { ...f, fin: FINALIDADE, ref: IMOVEL.ref, url: IMOVEL.url, sim: IMOVEL.similares, lat: IMOVEL.lat, lng: IMOVEL.lng, foto: IMOVEL.foto, pois: IMOVEL.pois, suites: IMOVEL.suites, lazer: IMOVEL.lazer, est: IMOVEL.metroEstacao, dif: IMOVEL.diferenciais, consT: IMOVEL.conservacaoTrecho };
   try { const q = new URLSearchParams(location.search); q.set("a", btoa(unescape(encodeURIComponent(JSON.stringify(dados))))); history.replaceState(null, "", location.pathname + "?" + q.toString() + "#analise"); } catch {}
 }
 function lerDoLink() {
@@ -1286,8 +1478,8 @@ function lerDoLink() {
   try {
     const d = JSON.parse(decodeURIComponent(escape(atob(bruto))));
     limparImovel();
-    Object.assign(IMOVEL, { ref: d.ref || "", url: d.url || "", similares: d.sim || [], lat: d.lat ?? null, lng: d.lng ?? null, foto: d.foto || null, pois: d.pois || [], suites: d.suites ?? null, lazer: d.lazer || [], metroEstacao: d.est || null, fonte: "link" });
-    abrirFormulario({ preco: d.preco, area: d.area, quartos: d.quartos, banheiros: d.banheiros, vagas: d.vagas, condominio: d.condoInformado === false ? null : d.condo, iptu: d.iptuInformado === false ? null : d.iptu, bairro: d.bairro, metroDistancia: d.metro, tipo: d.tipo, mobiliado: d.mobiliado });
+    Object.assign(IMOVEL, { ref: d.ref || "", url: d.url || "", similares: d.sim || [], lat: d.lat ?? null, lng: d.lng ?? null, foto: d.foto || null, pois: d.pois || [], suites: d.suites ?? null, lazer: d.lazer || [], metroEstacao: d.est || null, diferenciais: d.dif || [], conservacaoTrecho: d.consT || null, fonte: "link" });
+    abrirFormulario({ preco: d.preco, area: d.area, quartos: d.quartos, banheiros: d.banheiros, vagas: d.vagas, condominio: d.condoInformado === false ? null : d.condo, iptu: d.iptuInformado === false ? null : d.iptu, bairro: d.bairro, metroDistancia: d.metro, tipo: d.tipo, mobiliado: d.mobiliado, anoConstrucao: d.ano, conservacao: d.conservacao, padrao: d.padrao });
     if (d.distrito) $("f-distrito").value = d.distrito;
     definirFinalidade(d.fin || (d.objetivo === "morar" ? "moradia" : "investimento"), false);
     if (IMOVEL.url) $("link").value = IMOVEL.url;
@@ -1300,7 +1492,7 @@ $("btn-copiar").addEventListener("click", async () => {
 });
 $("btn-whats").addEventListener("click", () => {
   const R = window.__ULTIMA; if (!R) return;
-  const linha = FINALIDADE === "investimento" ? `Melhor estratégia: ${R.melhor.nome.split(" (")[0]}, ${brl(R.melhor.liq / 12)}/mês líquidos (${pct(R.melhor.yield)} ao ano)` : `Financiando: 1ª parcela ${brl(R.fin.sac1)} (SAC), entrada de ${brl(R.fin.entrada)}`;
+  const linha = FINALIDADE === "investimento" ? `Melhor estratégia: ${R.melhor.nome.split(" (")[0]}, ${R.melhor.id === "medio" ? `${brl(R.melhor.liq)} líquidos por ano` : `${brl(R.melhor.liq / 12)}/mês líquidos`} (${pct(R.melhor.yield)} ao ano)` : `Financiando: 1ª parcela ${brl(R.fin.sac1)} (SAC), entrada de ${brl(R.fin.entrada)}`;
   const txt = `Score de oportunidade: ${R.score.nota ?? "—"}/100 (${R.score.classe})\n${$("v-titulo").textContent}\n${$("r-titulo").textContent}, ${R.f.bairro} · ${brl(R.f.preco)}\n${linha}\nAnálise completa: ${location.href}`;
   window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank", "noopener");
 });
@@ -1312,7 +1504,7 @@ const SECOES_REL = [
   { id: "imovel", nome: "Dados do imóvel", desc: "Foto, preço, área, quartos, vagas, custos fixos e link do anúncio", fins: ["moradia", "investimento"],
     html: (R) => `${IMOVEL.foto ? `<img class="rel-foto" src="${esc(urlSegura(IMOVEL.foto))}" alt="">` : ""}<p style="margin:0 0 4px"><b style="font-size:13pt">${esc($("r-titulo").textContent)}</b></p><p class="sub" style="margin:0 0 6px">${esc($("r-local").textContent)}</p>
       <p style="margin:0"><b style="font-size:15pt">${esc($("r-preco").textContent)}</b> · ${esc($("r-m2").textContent)}${IMOVEL.ref ? ` · Ref. ${esc(IMOVEL.ref)}` : ""}</p>${conteudo("r-carac")}${IMOVEL.url ? `<p class="sub" style="margin:6px 0 0">Anúncio: ${esc(IMOVEL.url)}</p>` : ""}` },
-  { id: "score", nome: "Score de oportunidade", desc: "Nota, classificação, critérios, pesos e limitações", fins: ["moradia", "investimento"],
+  { id: "score", nome: "Score de oportunidade", desc: "Nota da finalidade escolhida, critérios, pesos e limitações", fins: ["moradia", "investimento"], titulo: () => `Score de oportunidade (${FINALIDADE})`,
     html: () => `<div class="anel">${semIds(document.querySelector("#sec-score .anel svg").outerHTML)}<div><p class="veredito-t">${esc($("score-classe").textContent)}</p><p class="sub" style="margin:0">${esc($("score-txt").textContent)}</p></div></div>${conteudo("score-fatores", "score-limites")}<div class="sub" style="font-size:8.5pt;margin-top:8px">${$("score-metodo").innerHTML}</div>` },
   { id: "conclusao", nome: "Conclusão e pontos principais", desc: "Resultado para a finalidade escolhida, pontos a favor e de atenção", fins: ["moradia", "investimento"],
     html: () => `<p class="veredito-t">${esc($("v-titulo").textContent)}</p><p class="sub">${esc($("v-frase").textContent)}</p><div class="grade-2"><div><h3 class="pos">Pontos a favor</h3>${conteudo("v-pros")}</div><div><h3 class="neg">Pontos de atenção</h3>${conteudo("v-contras")}</div></div>`, titulo: () => `Conclusão para ${FINALIDADE}` },
@@ -1331,11 +1523,17 @@ const SECOES_REL = [
   { id: "comprar-alugar", nome: "Comprar x alugar", desc: "Patrimônio comprando para morar contra alugar e aplicar", fins: ["moradia"],
     html: (R) => { const F = htmlFuturo(R, false); return `<p class="sub">${esc(F.sub)}</p><div class="tabela"><table>${F.tabela}</table></div><p class="sub">${esc(F.nota)}</p>`; } },
   { id: "custos", nome: "Custos de compra e manutenção", desc: "ITBI, cartório, condomínio, IPTU e manutenção", fins: ["moradia", "investimento"],
-    html: () => `<div class="tabela">${semIds($("custos-tabela").outerHTML)}</div>` },
+    html: () => `<div class="tabela">${semIds($("custos-tabela").outerHTML)}</div><p class="sub">${$("manut-explica").innerHTML}</p>` },
   { id: "riscos", nome: "Riscos e facilidade de revenda", desc: "Índice de liquidez e riscos identificados", fins: ["moradia", "investimento"],
     html: () => conteudo("liq-num", "riscos") },
-  { id: "argumentos", nome: "Argumentos comerciais e negociação", desc: "Argumentos, objeções e faixa de proposta", fins: [],
-    html: () => `<div class="grade-2"><div><h3>Argumentos</h3>${conteudo("c-args")}</div><div><h3>Objeções e respostas</h3>${conteudo("c-obj")}</div></div><h3>Faixa de proposta sugerida</h3>${conteudo("c-proposta")}<p class="sub">Sugestão de negociação com base nos números do anúncio, não é avaliação técnica.</p>` },
+  { id: "argumentos", nome: "Argumentos do imóvel", desc: "Argumentos específicos com a fonte de cada dado", fins: [],
+    html: () => conteudo("c-args") },
+  { id: "neg-comprador", nome: "Estratégia com o comprador", desc: "Objeções prováveis, argumentos e alternativas", fins: [], longa: true,
+    html: () => conteudo("c-comprador") },
+  { id: "neg-vendedor", nome: "Estratégia com o proprietário", desc: "Preço, propostas e defesa da comissão", fins: [], longa: true,
+    html: () => conteudo("c-vendedor") },
+  { id: "proposta", nome: "Faixa de proposta", desc: "Abertura e teto sugeridos", fins: [],
+    html: () => `${conteudo("c-proposta")}<p class="sub">Sugestão de negociação com base nos números do anúncio, não é avaliação técnica.</p>` },
   { id: "premissas", nome: "Premissas e fontes", desc: "Valores usados nos cálculos e de onde vêm", fins: ["moradia", "investimento"], longa: true,
     html: () => `<div class="tabela"><table><thead><tr><th>Premissa</th><th>Valor</th><th style="text-align:left">Fonte</th></tr></thead><tbody>${premissasPadrao().map((p) => `<tr><td>${esc(p.rot)}</td><td>${esc(virg(PREMISSAS[p.id]))}</td><td style="text-align:left;white-space:normal">${esc(p.fonte)}</td></tr>`).join("")}</tbody></table></div>` },
 ];
@@ -1801,7 +1999,8 @@ async function mostrarStatus() {
   const linhas = [];
   linhas.push(`<p style="margin:0 0 6px"><b>Temporada (Inside Airbnb):</b> ${A?.versao ? `coleta de ${dataBR(A.versao)}, carregada em ${dataHoraBR(A.processado_em)}, ${A.anuncios_no_arquivo.toLocaleString("pt-BR")} anúncios.` : "base detalhada ainda não carregada; usando média da cidade de jun/2026."}</p>`);
   linhas.push(`<p style="margin:0 0 6px"><b>Juros:</b> Selic ${virg(I.selic?.valor ?? "—")}% (${esc(I.selic?.data || "—")}). <b>IPCA 12 meses:</b> ${I.ipca12m ? virg(I.ipca12m.valor) + "% (" + esc(I.ipca12m.data) + ")" : "aguardando"}.</p>`);
-  linhas.push(`<p style="margin:0 0 6px"><b>Aluguel e venda:</b> ${esc(I.aluguel_m2_sp?.fonte || "FipeZAP")}, ${esc(I.aluguel_m2_sp?.data || "")}.</p>`);
+  linhas.push(`<p style="margin:0 0 6px"><b>Aluguel e venda:</b> ${esc(I.aluguel_m2_sp?.fonte || "FipeZAP")}, ${esc(I.aluguel_m2_sp?.data || "")}. Referência complementar: ${esc(QA_ALUGUEL_SP.fonte)}, R$ ${virg(QA_ALUGUEL_SP.valor.toFixed(2))}/m² (${QA_ALUGUEL_SP.data}).</p>`);
+  linhas.push(`<p style="margin:0 0 6px"><b>Custo de construção:</b> CUB R8-N do SindusCon-SP, base da estimativa de manutenção (premissa editável).</p>`);
   linhas.push(`<p class="sub" style="margin:0">Última verificação: ${dataHoraBR(L?.ultima_execucao)}. Próxima: ${dataHoraBR(L?.proxima_execucao_prevista)}.</p>`);
   const s = BASES.serie?.pontos || [];
   if (s.length >= 2) linhas.push(`<p class="sub" style="margin-top:6px">Evolução da diária mediana: ${s.map((p) => `${dataBR(p.versao)} ${brl(p.diaria_p50)}`).join("; ")}.</p>`);
