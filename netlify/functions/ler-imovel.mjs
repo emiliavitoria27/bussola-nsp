@@ -95,6 +95,20 @@ export function extrair(html, url) {
     while ((p = reP.exec(trecho)) && pois.length < 12) pois.push({ tipo: p[1], nome: titleCase(p[2].replace(/\s*,\s*/g, ", ").trim()).slice(0, 60), metros: num(p[3]) });
   }
   const foto = meta("og:image") || null;
+  // idade e conservação: só quando o próprio anúncio diz (nunca presumido)
+  const anoAtual = new Date().getFullYear();
+  let anoConstrucao = num(achar(/Ano de constru[çc][ãa]o:?\s*(\d{4})/i) || achar(/Constru[íi]do em:?\s*(\d{4})/i) || achar(/Entregue em:?\s*(\d{4})/i));
+  if (!anoConstrucao) { const idade = num(achar(/Idade(?: do im[óo]vel)?:?\s*(\d{1,3})\s*anos?/i)); if (idade != null) anoConstrucao = anoAtual - idade; }
+  if (anoConstrucao && (anoConstrucao < 1900 || anoConstrucao > anoAtual + 5)) anoConstrucao = null;
+  const desc = (meta("og:description") + " " + principal).toLowerCase();
+  let conservacao = null, conservacaoTrecho = null;
+  const termo = (re) => { const m = desc.match(re); return m ? m[0] : null; };
+  const reforma = termo(/(precisa(?:ndo)? de reforma|necessita(?:ndo)? de reforma|para reformar|requer reforma|a reformar)/);
+  const reformado = termo(/(totalmente reformado|rec[ée]m[- ]reformado|reformado|reforma recente|pronto para morar|im[óo]vel novo|nunca habitado|primeira loca[çc][ãa]o)/);
+  if (reforma) { conservacao = "reforma"; conservacaoTrecho = reforma; }
+  else if (reformado) { conservacao = "otimo"; conservacaoTrecho = reformado; }
+  const diferenciais = ["Varanda gourmet", "Varanda", "Sacada", "Vista", "Andar alto", "Sol da manhã", "Cozinha planejada", "Armários planejados", "Ar condicionado", "Depósito", "Quintal", "Jardim", "Churrasqueira", "Lareira", "Closet", "Escritório", "Lavabo", "Área de serviço"]
+    .filter((d) => new RegExp(`\\b${d.normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`, "i").test(principal.normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
   const condominioNome = achar(/Condom[ií]nio:\s*(.+?)\s+(?:Venda|Loca[çc][ãa]o)\s+R\$/i);
 
   // coordenadas, se a página tiver (mapa)
@@ -116,7 +130,7 @@ export function extrair(html, url) {
     bairro: bairroBruto.replace(/\s*\(Zona Sul\)\s*/i, "").trim(), bairroOriginal: bairroBruto,
     preco, aluguelAnunciado, area, areaTipo, quartos, suites, banheiros, vagas, condominio, iptu,
     metroEstacao: metro ? titleCase(metro[1].trim()) : null, metroDistancia: metro ? num(metro[2]) : null,
-    mobiliado, lazer, endereco: endereco.trim(), lat, lng, similares, foto: foto && !/no-image|logo/i.test(foto) ? foto : null, pois, condominioNome: condominioNome ? condominioNome.slice(0, 60) : null, lidoEm: new Date().toISOString(),
+    mobiliado, lazer, endereco: endereco.trim(), lat, lng, similares, foto: foto && !/no-image|logo/i.test(foto) ? foto : null, pois, condominioNome: condominioNome ? condominioNome.slice(0, 60) : null, anoConstrucao, conservacao, conservacaoTrecho, diferenciais, lidoEm: new Date().toISOString(),
   };
 }
 
