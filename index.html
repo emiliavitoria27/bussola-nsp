@@ -509,7 +509,7 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
 
       <section class="card so-inv" aria-labelledby="t-renda">
         <h2 id="t-renda">Quanto pode render por mês</h2>
-        <p class="sub">Três formas de alugar, já descontando custos, taxas e imposto estimado.</p>
+        <p class="sub">Duas formas de alugar (tradicional e curta temporada), já descontando custos, taxas e imposto estimado.</p>
         <div class="estrategias" id="estrategias"></div>
         <div class="barras" id="estrategias-barras"></div>
       </section>
@@ -814,9 +814,7 @@ function premissasPadrao() {
     { id: "aplicacao", rot: "Rendimento da aplicação alternativa (% ao ano, bruto)", v: selic, fonte: I.selic ? `${I.selic.fonte} (${I.selic.data}). Taxa de hoje; pode cair` : "Selic" },
     { id: "irAplic", rot: "IR sobre a aplicação (%)", v: 15, fonte: "Renda fixa acima de 2 anos" },
     { id: "custoVenda", rot: "Custo para vender no futuro (% corretagem)", v: 6, fonte: "Tabela usual do CRECI-SP" },
-    { id: "mpPremio", rot: "Médio prazo: aluguel acima do tradicional (%)", v: 35, fonte: "Hipótese, mobiliado 1 a 6 meses" },
-    { id: "mpOcup", rot: "Médio prazo: ocupação (%)", v: 85, fonte: "Hipótese" },
-    { id: "gestao", rot: "Gestão de temporada/médio prazo (%)", v: 20, fonte: "Prática de mercado" },
+    { id: "gestao", rot: "Gestão de curta temporada (%)", v: 20, fonte: "Prática de mercado" },
     { id: "plataforma", rot: "Taxa da plataforma (%)", v: 3, fonte: "Airbnb, taxa do anfitrião no modelo dividido" },
     { id: "limpeza", rot: "Limpeza por estadia (R$)", v: 120, fonte: "Hipótese" },
     { id: "estadia", rot: "Noites por estadia em média", v: 3, fonte: "Padrão do Inside Airbnb" },
@@ -851,24 +849,23 @@ function temporadaRef(distrito, quartos, lat, lng) {
   const noitesCidade = cid?.noites_p50 ?? I.temporada_ref_cidade?.noites_ano ?? 76;
   const out = (g, nivel) => ({
     diaria: g.diaria_p50, p25: g.diaria_p25, p75: g.diaria_p75, noites: g.noites_p50 ?? noitesCidade, n: g.n, ativos: g.ativos,
-    diariaMP: g.n_medio_prazo >= 5 ? g.diaria_medio_prazo_p50 : null, nMP: g.n_medio_prazo, nivel, versao: A?.versao, fonte: "Inside Airbnb",
+    nivel, versao: A?.versao, fonte: "Inside Airbnb",
   });
   if (A?.celulas && lat && lng) {
-    let n = 0, ativos = 0, sd = 0, sn = 0, mpN = 0, mpS = 0;
+    let n = 0, ativos = 0, sd = 0, sn = 0;
     for (const dy of [-0.01, 0, 0.01]) for (const dx of [-0.01, 0, 0.01]) {
       const c = A.celulas[`${(lat + dy).toFixed(2)},${(lng + dx).toFixed(2)}`]; const g = c && (c[f] || c.todos);
       if (!g || !g.diaria_p50) continue;
       n += g.n; sd += g.diaria_p50 * g.n; if (g.noites_p50 != null) { ativos += g.ativos; sn += g.noites_p50 * g.ativos; }
-      if (g.diaria_medio_prazo_p50) { mpN += g.n_medio_prazo; mpS += g.diaria_medio_prazo_p50 * g.n_medio_prazo; }
     }
-    if (n >= 15) return { diaria: sd / n, noites: ativos ? sn / ativos : noitesCidade, n, ativos, diariaMP: mpN >= 5 ? mpS / mpN : null, nMP: mpN, nivel: "anúncios num raio de cerca de 1 km", versao: A.versao, fonte: "Inside Airbnb" };
+    if (n >= 15) return { diaria: sd / n, noites: ativos ? sn / ativos : noitesCidade, n, ativos, nivel: "anúncios num raio de cerca de 1 km", versao: A.versao, fonte: "Inside Airbnb" };
   }
   const d = A?.distritos?.[distrito];
   if (d?.[f]?.n >= 10 && d[f].diaria_p50) return out(d[f], `distrito ${distrito}, imóveis com ${f === "0-1" ? "até 1 quarto" : f === "3+" ? "3 quartos ou mais" : "2 quartos"}`);
   if (d?.todos?.n >= 10 && d.todos.diaria_p50) return out(d.todos, `distrito ${distrito}, todos os tamanhos`);
   if (cid?.diaria_p50) return out(cid, "média da cidade de São Paulo (distrito sem amostra suficiente)");
   const r = I.temporada_ref_cidade || { diaria: 413, noites_ano: 76, data: "jun/2026" };
-  return { diaria: r.diaria, noites: r.noites_ano, n: null, ativos: null, diariaMP: null, nivel: `média da cidade (${r.data}), base detalhada ainda não carregada`, versao: r.data, fonte: "Inside Airbnb" };
+  return { diaria: r.diaria, noites: r.noites_ano, n: null, ativos: null, nivel: `média da cidade (${r.data}), base detalhada ainda não carregada`, versao: r.data, fonte: "Inside Airbnb" };
 }
 
 // ================= leitura do link =================
@@ -1029,20 +1026,7 @@ function calcular(rolar) {
     linhas: [["Aluguel estimado", brl(alugMes) + "/mês"], ["Meses vazio por ano", virg(P.vacancia)], ["Administração", brl(tAdm / 12) + "/mês"], ["Condomínio e IPTU nos meses vazios", brl(tFixoVazio / 12) + "/mês"], ["Manutenção", brl(manutAno / 12) + "/mês"], ["Imposto de renda estimado", brl(tIR / 12) + "/mês"]],
     nota: `Inquilino paga condomínio e IPTU. Aluguel pela média de ${virg(P.aluguelM2)} R$/m² da cidade (FipeZAP); o bairro pode estar acima ou abaixo.` };
 
-  // 2) médio prazo
-  const mpMesRef = ref.diariaMP ? Math.round(ref.diariaMP * 30) : null;
-  const mpMes = Math.round(mpMesRef || alugMes * (1 + pc(P.mpPremio)));
-  const mRec = mpMes * 12 * pc(P.mpOcup);
-  const mGest = mRec * pc(P.gestao);
-  const mFixo = (fixoMes + P.contas) * 12;
-  const mIR = Math.max(0, mRec - mGest - fixoMes * 12) * pc(P.ir);
-  const mLiq = mRec - mGest - mFixo - manutAno - mIR;
-  const medio = { id: "medio", nome: "Médio prazo (mobiliado, 1 a 6 meses)", recMes: mpMes, rec: mRec, custos: mGest + mFixo + manutAno + mIR, liq: mLiq, invest: investBase + mobilia, extra: mobilia,
-    // sem valores de renda por mês nesta modalidade (pedido): tudo apresentado no ano, cálculos inalterados
-    linhas: [["Receita bruta estimada no ano", brl(mRec)], ["Ocupação", P.mpOcup + "%"], ["Gestão no ano", brl(mGest)], ["Condomínio, IPTU e contas no ano", brl(mFixo)], ["Manutenção no ano", brl(manutAno)], ["Imposto de renda estimado no ano", brl(mIR)]],
-    nota: mpMesRef ? `Receita estimada pela mediana de ${ref.nMP} anúncios de estadia mínima de 28 noites (${ref.nivel}, Inside Airbnb).` : `Sem anúncios suficientes de 28+ noites na região; estimado como ${P.mpPremio}% acima do aluguel tradicional.` };
-
-  // 3) curta temporada
+  // 2) curta temporada
   const noites = clamp(ref.noites || 0, 0, 300);
   const cRec = ref.diaria * noites;
   const estadias = noites / Math.max(1, P.estadia);
@@ -1055,7 +1039,7 @@ function calcular(rolar) {
     linhas: [["Diária típica", brl(ref.diaria)], ["Noites ocupadas por ano", Math.round(noites)], ["Receita bruta", brl(cRec / 12) + "/mês"], ["Plataforma e gestão", brl(cTaxas / 12) + "/mês"], ["Limpezas", brl(cLimp / 12) + "/mês"], ["Condomínio, IPTU e contas", brl(cFixo / 12) + "/mês"], ["Imposto de renda estimado", brl(cIR / 12) + "/mês"]],
     nota: `Base: ${ref.n ? ref.n + " anúncios, " : ""}${ref.nivel}. Coleta do Inside Airbnb de ${ref.versao ? dataBR(ref.versao) : "—"}. Ocupação estimada pelo Inside Airbnb, que tende a ser conservadora.` };
 
-  const ests = [trad, medio, curta];
+  const ests = [trad, curta]; // modalidades consideradas: aluguel tradicional e curta temporada
   ests.forEach((e) => { e.yield = e.liq / e.invest; });
   const melhor = ests.reduce((a, b) => (b.yield > a.yield ? b : a));
 
@@ -1118,7 +1102,7 @@ function calcular(rolar) {
   const scores = { moradia: calcularScore("moradia", X), investimento: calcularScore("investimento", X) };
   const score = scores[FINALIDADE];
 
-  const R = { f, P, ref, ests, trad, medio, curta, melhor, m2, sims, medSim, difSim, estBairro, proj, morar, breakeven, liq, condoM2, score, scores, nota: score.nota, ref10, alugMes, custoCompra, investBase, mobilia, aplicLiq, manutAno, MAN, fixoMes, fin };
+  const R = { f, P, ref, ests, trad, curta, melhor, m2, sims, medSim, difSim, estBairro, proj, morar, breakeven, liq, condoM2, score, scores, nota: score.nota, ref10, alugMes, custoCompra, investBase, mobilia, aplicLiq, manutAno, MAN, fixoMes, fin };
   desenhar(R);
   salvarNoLink(f);
   $("resultado").classList.remove("oculto");
@@ -1365,7 +1349,7 @@ function taxaEmpate(trad, f, inv, n, v, P) {
   for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (inv * Math.pow(1 + mid, n) > pat(mid)) hi = mid; else lo = mid; }
   return (lo + hi) / 2 / (1 - P.irAplic / 100);
 }
-const nomeEstr = (e) => (e.id === "trad" ? "aluguel tradicional" : e.id === "medio" ? "médio prazo" : "curta temporada");
+const nomeEstr = (e) => (e.id === "trad" ? "aluguel tradicional" : "curta temporada");
 
 // ================= desenho =================
 function desenhar(R) {
@@ -1478,7 +1462,7 @@ function desenhar(R) {
   $("estrategias").innerHTML = ests.map((e) => {
     const tag = e === melhor ? '<span class="chip verde">Melhor retorno</span>' : e.yield < 0 ? '<span class="chip vermelho">Dá prejuízo</span>' : e.yield < R.aplicLiq * 0.6 ? '<span class="chip ambar">Retorno baixo</span>' : "";
     return `<div class="estr ${e === melhor ? "melhor" : ""}"><h3><span>${esc(e.nome)}</span>${tag}</h3>
-      <dl>${e.id === "medio" ? `<dt>Renda líquida no ano</dt><dd class="forte">${brl(e.liq)}</dd>` : `<dt>Sobra no bolso por mês</dt><dd class="forte">${brl(e.liq / 12)}</dd>`}
+      <dl><dt>Sobra no bolso por mês</dt><dd class="forte">${brl(e.liq / 12)}</dd>
       <dt>Rentabilidade líquida ao ano</dt><dd>${pct(e.yield)}</dd>
       ${e.linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}
       ${e.extra ? `<dt>Investimento extra em mobília</dt><dd>${brl(e.extra)}</dd>` : ""}</dl>
@@ -1498,7 +1482,7 @@ function desenhar(R) {
     <tr><td>ITBI (${virg(R.P.itbi)}%)</td><td>${brl(f.preco * R.P.itbi / 100)}</td></tr>
     <tr><td>Escritura e registro (estimativa)</td><td>${brl(f.preco * R.P.cartorio / 100)}</td></tr>
     <tr><td><b>Total para comprar</b></td><td><b>${brl(R.investBase)}</b></td></tr>
-    <tr class="so-inv"><td>Mobiliar e equipar (temporada ou médio prazo)</td><td>${f.mobiliado ? "já mobiliado" : brl(R.mobilia)}</td></tr>
+    <tr class="so-inv"><td>Mobiliar e equipar (curta temporada)</td><td>${f.mobiliado ? "já mobiliado" : brl(R.mobilia)}</td></tr>
     <tr><td>Condomínio + IPTU por mês</td><td>${f.condoInformado || f.iptuInformado ? brl(R.fixoMes) : "não informado"}</td></tr>
     <tr><td>Manutenção estimada por mês <span class="chip ambar" style="margin-left:4px">estimativa</span></td><td>${brl(R.manutAno / 12)}</td></tr></tbody>`;
   $("manut-explica").innerHTML = `<b>Como a manutenção é estimada.</b> ${esc(R.MAN.explicacao)} Cobre pintura, hidráulica, elétrica, pisos e reparos da unidade${R.MAN.casa ? ", além de telhado, fachada e áreas externas" : "; as áreas comuns já são pagas no condomínio"}. ${R.MAN.avisos.length ? "Dados que faltam: " + esc(R.MAN.avisos.join("; ")) + ". " : ""}É uma estimativa: não é orçamento nem dado medido, e não inclui reforma, que deve ser orçada à parte.`;
@@ -1585,7 +1569,7 @@ $("btn-copiar").addEventListener("click", async () => {
 });
 $("btn-whats").addEventListener("click", () => {
   const R = window.__ULTIMA; if (!R) return;
-  const linha = FINALIDADE === "investimento" ? `Melhor estratégia: ${R.melhor.nome.split(" (")[0]}, ${R.melhor.id === "medio" ? `${brl(R.melhor.liq)} líquidos por ano` : `${brl(R.melhor.liq / 12)}/mês líquidos`} (${pct(R.melhor.yield)} ao ano)` : `Financiando: 1ª parcela ${brl(R.fin.sac1)} (SAC), entrada de ${brl(R.fin.entrada)}`;
+  const linha = FINALIDADE === "investimento" ? `Melhor estratégia: ${R.melhor.nome.split(" (")[0]}, ${brl(R.melhor.liq / 12)}/mês líquidos (${pct(R.melhor.yield)} ao ano)` : `Financiando: 1ª parcela ${brl(R.fin.sac1)} (SAC), entrada de ${brl(R.fin.entrada)}`;
   const txt = `Score de oportunidade: ${R.score.nota ?? "—"}/100 (${R.score.classe})\n${$("v-titulo").textContent}\n${$("r-titulo").textContent}, ${R.f.bairro} · ${brl(R.f.preco)}\n${linha}\nAnálise completa: ${location.href}`;
   registrarAcao("compartilhar-whatsapp", IMOVEL.ref ? "Ref. " + IMOVEL.ref : $("r-titulo").textContent);
   window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank", "noopener");
@@ -1610,7 +1594,7 @@ const SECOES_REL = [
     html: () => `${conteudo("carac-num")}<p class="sub">${esc($("carac-lazer").textContent)}</p>` },
   { id: "financiamento", nome: "Financiamento e custo mensal", desc: "Entrada, parcelas SAC e Price, renda sugerida", fins: ["moradia"],
     html: () => `<p class="sub">${esc($("fin-sub").textContent)}</p>${conteudo("fin-num")}<div class="tabela">${conteudo("fin-tabela")}</div><p class="sub">${esc($("fin-nota").textContent)}</p>` },
-  { id: "rentabilidade", nome: "Rentabilidade", desc: "Aluguel tradicional, médio prazo e curta temporada", fins: ["investimento"], longa: true,
+  { id: "rentabilidade", nome: "Rentabilidade", desc: "Aluguel tradicional e curta temporada", fins: ["investimento"], longa: true,
     html: () => `${conteudo("estrategias", "estrategias-barras")}` },
   { id: "projecao", nome: "Projeção patrimonial", desc: "Patrimônio em 5, 10 e 15 anos contra a aplicação", fins: ["investimento"],
     html: (R) => { const F = htmlFuturo(R, true); return `<p class="sub">${esc(F.sub)}</p><div class="tabela"><table>${F.tabela}</table></div><p class="sub">${esc(F.nota)}</p>`; } },
