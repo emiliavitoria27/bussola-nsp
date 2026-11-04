@@ -368,9 +368,30 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
 
   <!-- ================= EQUIPE (administradores) ================= -->
   <section class="view so-equipe" id="v-equipe" aria-labelledby="t-equipe">
-    <div class="cabeca"><div><h1 id="t-equipe">Equipe</h1><p class="sub" style="margin:0">Aprove novos acessos, bloqueie quem saiu da empresa e redefina senhas.</p></div></div>
+    <div class="cabeca"><div><h1 id="t-equipe">Equipe e auditoria</h1><p class="sub" style="margin:0">Aprove acessos, bloqueie quem saiu da empresa, redefina senhas e consulte o histórico de ações.</p></div></div>
+    <div class="segmento" role="tablist" aria-label="Equipe" style="margin-bottom:12px">
+      <button type="button" data-eq-aba="pessoas" aria-pressed="true">Pessoas</button>
+      <button type="button" data-eq-aba="auditoria" aria-pressed="false">Auditoria</button>
+    </div>
     <div class="aviso" id="aviso-equipe" role="status"></div>
-    <div class="card" style="margin-top:12px"><div class="tabela"><table id="tabela-equipe"></table></div></div>
+    <div data-eq-painel="pessoas" class="card" style="margin-top:12px"><div class="tabela"><table id="tabela-equipe"></table></div></div>
+    <div data-eq-painel="auditoria" class="oculto" style="margin-top:12px">
+      <div class="card">
+        <div class="campos">
+          <label class="campo">Mês<select id="au-mes"></select></label>
+          <label class="campo">Usuário<select id="au-usuario"><option value="">Todos</option></select></label>
+          <label class="campo">Tipo de ação<select id="au-tipo">
+            <option value="">Todas</option><option value="login|logout|cadastro|senha">Logins, saídas e contas</option><option value="login-falhou">Tentativas de login com erro</option>
+            <option value="admin">Administração da equipe</option><option value="alerta">Alertas</option><option value="analise">Análises de imóveis</option>
+            <option value="busca">Buscas</option><option value="relatorio">Relatórios em PDF</option><option value="compartilhar">Compartilhamentos</option>
+            <option value="premissas">Premissas alteradas</option><option value="rotina">Rotinas automáticas</option></select></label>
+        </div>
+        <div class="acoes"><button class="botao" type="button" id="au-buscar">Consultar</button><button class="botao sec" type="button" id="au-csv">Baixar planilha (CSV) do filtro</button></div>
+        <p class="sub" style="margin:12px 0 0;font-size:.8rem">Os registros são gravados pelo servidor com o login de quem fez a ação e o horário do servidor. Ninguém, nem administradores, consegue editar ou apagar registros pelo sistema.</p>
+      </div>
+      <div class="card" style="margin-top:12px"><p class="sub" id="au-total" style="margin:0 0 8px"></p><div class="tabela"><table id="au-tabela"></table></div>
+        <div class="acoes"><button class="botao sec oculto" type="button" id="au-mais">Carregar mais</button></div></div>
+    </div>
   </section>
 
   <!-- ================= ANALISAR IMÓVEL ================= -->
@@ -380,9 +401,10 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
       <button class="botao sec oculto" id="voltar-busca" type="button">← Voltar aos resultados da busca</button></div>
     <div class="card" id="bloco-busca">
       <form class="busca" id="form-link" autocomplete="off">
-        <input id="link" type="url" inputmode="url" placeholder="https://www.novasaopaulo.com.br/imovel/…" aria-label="Link do anúncio">
+        <input id="link" type="text" autocomplete="off" placeholder="Link do anúncio, código (ex.: BI52877) ou endereço (ex.: Rua Marcos Fernandes, 111)" aria-label="Link, código ou endereço do imóvel">
         <button class="botao" id="btn-analisar" type="submit">Analisar imóvel</button>
       </form>
+      <div id="busca-lista" class="pilha oculto" style="margin-top:12px;gap:8px"></div>
       <p class="selo">Sem link? <button class="link-btn" id="btn-manual" type="button">Preencha os dados à mão</button>. <span id="selo-dados">Carregando bases de dados…</span></p>
       <div class="aviso" id="aviso" role="status"></div>
     </div>
@@ -814,6 +836,10 @@ function montarPremissas(manter) {
   $("grade-premissas").querySelectorAll("input").forEach((el) => el.addEventListener("input", () => {
     PREMISSAS[el.id.slice(2)] = num(el.value) ?? 0; if (!$("resultado").classList.contains("oculto")) calcular();
   }));
+  $("grade-premissas").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
+    const p = lista.find((x) => "p-" + x.id === el.id);
+    if (p) registrarAcao("premissas", `${p.rot}: ${el.value}${IMOVEL.ref ? " (análise da Ref. " + IMOVEL.ref + ")" : ""}`);
+  }));
 }
 
 // ================= referência de temporada =================
@@ -852,14 +878,79 @@ async function lerAnuncio(link) {
   if (r.status === 401) sessaoExpirada();
   return j;
 }
+// ----- busca por código ou endereço (usa o catálogo de imóveis da Nova SP)
+const TIPOS_LOGRADOURO = [[/^(r|rua)$/, "rua"], [/^(av|avenida)$/, "avenida"], [/^(al|alameda)$/, "alameda"], [/^(pc|pç|praca|praça)$/, "praca"], [/^(tv|trav|travessa)$/, "travessa"], [/^(est|estrada)$/, "estrada"], [/^(rod|rodovia)$/, "rodovia"], [/^(lgo|largo)$/, "largo"], [/^(vl|vila)$/, "vila"]];
+const PALAVRAS_VAZIAS = new Set(["de", "da", "do", "dos", "das", "e", "sao", "paulo", "sp", "n", "no", "numero"]);
+function tokensEndereco(texto) {
+  const t = normal(texto).replace(/[.,;:\-–/#º°]/g, " ").split(/\s+/).filter(Boolean);
+  const numero = (t.find((x) => /^\d{1,5}$/.test(x)) || null);
+  const palavras = t.map((x) => { for (const [re, v] of TIPOS_LOGRADOURO) if (re.test(x)) return v; return x; })
+    .filter((x) => !/^\d/.test(x) && !/^\*+$/.test(x) && !PALAVRAS_VAZIAS.has(x));
+  return { palavras, numero };
+}
+function buscarPorEndereco(texto) {
+  const q = tokensEndereco(texto);
+  const qs = new Set(q.palavras);
+  const achados = [];
+  for (const im of CAT.dados?.imoveis || []) {
+    if (im.ativo === false || !im.endereco) continue;
+    const e = tokensEndereco(im.endereco);
+    const nucleo = e.palavras.filter((w) => !["rua", "avenida", "alameda", "praca", "travessa", "estrada", "rodovia", "largo"].includes(w));
+    if (!nucleo.length || !nucleo.every((w) => qs.has(w))) continue; // todas as palavras do nome da rua precisam estar na busca
+    const tipoOk = e.palavras.length === nucleo.length || e.palavras.some((w) => qs.has(w));
+    let pts = nucleo.length * 10 + (tipoOk ? 3 : 0);
+    let numero = "sem número no anúncio";
+    if (e.numero && q.numero) { if (e.numero !== q.numero) continue; pts += 20; numero = "mesmo número"; }
+    else if (q.numero && !e.numero) numero = "número não divulgado no anúncio";
+    if (normal(im.bairro).split(" ").every((w) => qs.has(w))) pts += 5;
+    achados.push({ im, pts, numero });
+  }
+  return achados.sort((a, b) => b.pts - a.pts || (a.im.preco_venda || 9e12) - (b.im.preco_venda || 9e12));
+}
+function mostrarListaBusca(itens, titulo) {
+  const box = $("busca-lista");
+  box.classList.remove("oculto");
+  box.innerHTML = `<p class="sub" style="margin:0">${esc(titulo)}</p>` + itens.slice(0, 15).map(({ im, numero }) => `<div class="poi" style="align-items:center;flex-wrap:wrap">
+    <span style="color:var(--tinta)"><b>Ref. ${esc(im.ref)}</b> · ${esc(im.tipo)} · ${esc(im.endereco || "")} · ${esc(im.bairro)}<br><span class="sub" style="font-size:.8rem">${[im.area && im.area + " m²", im.quartos != null && im.quartos + " quartos", im.vagas != null && im.vagas + " vagas", im.preco_venda && "venda " + brl(im.preco_venda), im.preco_locacao && "aluguel " + brl(im.preco_locacao), numero].filter(Boolean).join(" · ")}</span></span>
+    <button class="botao pequeno" type="button" data-abrir-ref="${esc(im.ref)}">Analisar</button></div>`).join("") + (itens.length > 15 ? `<p class="sub" style="margin:0">Mostrando 15 de ${itens.length}. Inclua o número ou o bairro para refinar.</p>` : "");
+}
+$("busca-lista").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-abrir-ref]"); if (!b) return;
+  const im = acharNoCatalogo(b.dataset.abrirRef); if (!im) return;
+  $("busca-lista").classList.add("oculto");
+  abrirAnaliseDe(im, FINALIDADE, "analise"); $("voltar-busca").classList.add("oculto");
+});
+async function buscarCodigoOuEndereco(texto) {
+  const btn = $("btn-analisar"); btn.disabled = true; btn.textContent = "Procurando…"; semAviso(); $("busca-lista").classList.add("oculto");
+  try { await garantirCatalogo(); }
+  catch (e) { aviso("Não consegui consultar o catálogo agora (" + e.message + "). Cole o link do anúncio.", "erro"); return; }
+  finally { btn.disabled = false; btn.textContent = "Analisar imóvel"; }
+  const codigo = texto.replace(/^ref\.?:?\s*/i, "").trim().toUpperCase();
+  if (/^[A-Z]{2}\d{3,6}$/.test(codigo)) {
+    registrarAcao("busca-codigo", codigo);
+    const im = CAT.dados.imoveis.find((i) => i.ref === codigo);
+    if (!im) { aviso(`O código ${codigo} não está no catálogo de hoje (atualizado ${dataHoraBR(CAT.dados.atualizado_em)}). Ele pode ter saído do site ou ter sido publicado depois. Cole o link do anúncio.`, "erro"); return; }
+    if (im.ativo === false) aviso(`O imóvel ${codigo} saiu do site em ${dataBR(im.saiu_em)}; os dados são do último registro no catálogo.`, "info");
+    abrirAnaliseDe(im, FINALIDADE, "analise"); $("voltar-busca").classList.add("oculto"); return;
+  }
+  const achados = buscarPorEndereco(texto);
+  registrarAcao("busca-endereco", `“${texto.slice(0, 120)}” (${achados.length} resultado(s))`);
+  if (!achados.length) { aviso("Nenhum imóvel ativo do catálogo tem esse endereço. Confira a grafia do nome da rua ou use o código ou o link do anúncio. Lembre que alguns anúncios não divulgam o número.", "erro"); return; }
+  const exatos = achados.filter((a) => a.numero === "mesmo número");
+  if (exatos.length === 1 && achados[0] === exatos[0]) { abrirAnaliseDe(exatos[0].im, FINALIDADE, "analise"); $("voltar-busca").classList.add("oculto"); return; }
+  mostrarListaBusca(achados, `${achados.length} imóvel(is) encontrados nesse endereço. Escolha qual analisar:`);
+}
+
 $("form-link").addEventListener("submit", async (e) => {
   e.preventDefault();
   const link = $("link").value.trim();
-  if (!link) { aviso("Cole o link do anúncio no campo acima.", "erro"); return; }
+  if (!link) { aviso("Cole o link, o código ou o endereço do imóvel no campo acima.", "erro"); return; }
+  $("busca-lista").classList.add("oculto");
+  if (!/^(https?:\/\/|www\.|novasaopaulo\.com)/i.test(link)) { buscarCodigoOuEndereco(link); return; }
   $("voltar-busca").classList.add("oculto");
   const btn = $("btn-analisar"); btn.disabled = true; btn.textContent = "Lendo anúncio…"; semAviso();
   try {
-    const j = await lerAnuncio(link);
+    const j = await lerAnuncio(/^https?:/i.test(link) ? link : "https://" + link);
     if (!j.ok) { aviso(j.erro, "erro"); limparImovel(); abrirFormulario({}); return; }
     limparImovel(); Object.assign(IMOVEL, j.dados, { fonte: "anuncio" });
     abrirFormulario(j.dados);
@@ -872,7 +963,7 @@ $("form-link").addEventListener("submit", async (e) => {
 });
 function limparImovel() { Object.assign(IMOVEL, { similares: [], lat: null, lng: null, ref: "", url: "", foto: null, pois: [], lazer: [], tags: [], fonte: "manual", tipo: "", bairro: "", cidade: "São Paulo", suites: null, condominioNome: null, metroEstacao: null, diferenciais: [], conservacaoTrecho: null, anoConstrucao: null, conservacao: null }); }
 $("btn-manual").addEventListener("click", () => { limparImovel(); $("voltar-busca").classList.add("oculto"); abrirFormulario({}); $("f-preco").focus(); });
-$("btn-calcular").addEventListener("click", () => calcular(true));
+$("btn-calcular").addEventListener("click", () => { calcular(true); const f = lerFormulario(); if (f.preco && f.area) registrarAcao("analise-manual", `${IMOVEL.ref ? "Ref. " + IMOVEL.ref + ", " : ""}${f.tipo}, ${f.area} m², ${brl(f.preco)}, ${f.bairro || "bairro não informado"}`); });
 
 function abrirFormulario(d) {
   $("form-imovel").classList.remove("oculto");
@@ -947,8 +1038,9 @@ function calcular(rolar) {
   const mIR = Math.max(0, mRec - mGest - fixoMes * 12) * pc(P.ir);
   const mLiq = mRec - mGest - mFixo - manutAno - mIR;
   const medio = { id: "medio", nome: "Médio prazo (mobiliado, 1 a 6 meses)", recMes: mpMes, rec: mRec, custos: mGest + mFixo + manutAno + mIR, liq: mLiq, invest: investBase + mobilia, extra: mobilia,
-    linhas: [["Aluguel mensal estimado", brl(mpMes) + "/mês"], ["Ocupação", P.mpOcup + "%"], ["Gestão", brl(mGest / 12) + "/mês"], ["Condomínio, IPTU e contas", brl(mFixo / 12) + "/mês"], ["Manutenção", brl(manutAno / 12) + "/mês"], ["Imposto de renda estimado", brl(mIR / 12) + "/mês"]],
-    nota: mpMesRef ? `Valor mensal pela mediana de ${ref.nMP} anúncios de estadia mínima de 28 noites (${ref.nivel}, Inside Airbnb).` : `Sem anúncios suficientes de 28+ noites na região; estimado como ${P.mpPremio}% acima do tradicional.` };
+    // sem valores de renda por mês nesta modalidade (pedido): tudo apresentado no ano, cálculos inalterados
+    linhas: [["Receita bruta estimada no ano", brl(mRec)], ["Ocupação", P.mpOcup + "%"], ["Gestão no ano", brl(mGest)], ["Condomínio, IPTU e contas no ano", brl(mFixo)], ["Manutenção no ano", brl(manutAno)], ["Imposto de renda estimado no ano", brl(mIR)]],
+    nota: mpMesRef ? `Receita estimada pela mediana de ${ref.nMP} anúncios de estadia mínima de 28 noites (${ref.nivel}, Inside Airbnb).` : `Sem anúncios suficientes de 28+ noites na região; estimado como ${P.mpPremio}% acima do aluguel tradicional.` };
 
   // 3) curta temporada
   const noites = clamp(ref.noites || 0, 0, 300);
@@ -1487,6 +1579,7 @@ function lerDoLink() {
   } catch { return false; }
 }
 $("btn-copiar").addEventListener("click", async () => {
+  registrarAcao("compartilhar-link", IMOVEL.ref ? "Ref. " + IMOVEL.ref : $("r-titulo").textContent);
   try { await navigator.clipboard.writeText(location.href); aviso("Link copiado. Quem abrir verá esta mesma análise.", "ok"); $("aviso").scrollIntoView({ block: "center" }); }
   catch { prompt("Copie o link:", location.href); }
 });
@@ -1494,6 +1587,7 @@ $("btn-whats").addEventListener("click", () => {
   const R = window.__ULTIMA; if (!R) return;
   const linha = FINALIDADE === "investimento" ? `Melhor estratégia: ${R.melhor.nome.split(" (")[0]}, ${R.melhor.id === "medio" ? `${brl(R.melhor.liq)} líquidos por ano` : `${brl(R.melhor.liq / 12)}/mês líquidos`} (${pct(R.melhor.yield)} ao ano)` : `Financiando: 1ª parcela ${brl(R.fin.sac1)} (SAC), entrada de ${brl(R.fin.entrada)}`;
   const txt = `Score de oportunidade: ${R.score.nota ?? "—"}/100 (${R.score.classe})\n${$("v-titulo").textContent}\n${$("r-titulo").textContent}, ${R.f.bairro} · ${brl(R.f.preco)}\n${linha}\nAnálise completa: ${location.href}`;
+  registrarAcao("compartilhar-whatsapp", IMOVEL.ref ? "Ref. " + IMOVEL.ref : $("r-titulo").textContent);
   window.open("https://wa.me/?text=" + encodeURIComponent(txt), "_blank", "noopener");
 });
 // ================= relatório em PDF personalizável =================
@@ -1566,6 +1660,7 @@ $("rel-gerar").addEventListener("click", () => {
   const ids = [...$("rel-opcoes").querySelectorAll("input:checked")].map((i) => i.value);
   if (!ids.length) { aviso("Marque pelo menos uma seção.", "erro", "aviso-rel"); return; }
   ls.set("radar-rel-" + FINALIDADE, ids);
+  registrarAcao("relatorio-pdf", `${IMOVEL.ref ? "Ref. " + IMOVEL.ref : $("r-titulo").textContent}, finalidade ${FINALIDADE}, seções: ${SECOES_REL.filter((x) => ids.includes(x.id)).map((x) => x.nome).join(", ")}${$("rel-para").value.trim() ? `, preparado para ${$("rel-para").value.trim()}` : ""}`);
   montarRelatorio(ids);
   $("dlg-relatorio").close("gerar");
   const tituloAntes = document.title;
@@ -1578,6 +1673,13 @@ $("rel-gerar").addEventListener("click", () => {
 });
 $("btn-imprimir").addEventListener("click", abrirRelatorio);
 $("btn-restaurar").addEventListener("click", () => { PREMISSAS = {}; montarPremissas(false); calcular(); });
+
+// ================= auditoria (ações feitas na tela) =================
+// O servidor carimba quem fez e quando; aqui só dizemos o que aconteceu.
+function registrarAcao(tipo, detalhe) {
+  if (!SESSAO.usuario) return;
+  fetch("/api/auditoria", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tipo, detalhe: String(detalhe || "").slice(0, 400) }) }).catch(() => {});
+}
 
 // ================= tema claro / escuro =================
 function temaAtual() { const t = document.documentElement.getAttribute("data-theme"); return t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
@@ -1650,11 +1752,65 @@ $("s-salvar").addEventListener("click", async () => {
   catch (err) { aviso(err.message, "erro", "aviso-senha"); }
 });
 
+// ================= auditoria (administradores) =================
+const AUD = { pagina: 0, registros: [], total: 0, usuarios: [] };
+document.querySelectorAll("[data-eq-aba]").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-eq-aba]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  document.querySelectorAll("[data-eq-painel]").forEach((p) => p.classList.toggle("oculto", p.dataset.eqPainel !== b.dataset.eqAba));
+  if (b.dataset.eqAba === "auditoria" && !AUD.registros.length) consultarAuditoria(false);
+}));
+(function montarMeses() {
+  const d = new Date(); const ops = [];
+  for (let i = 0; i < 12; i++) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); const v = `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`; ops.push(`<option value="${v}">${x.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</option>`); }
+  $("au-mes").innerHTML = ops.join("");
+})();
+const ROT_TIPO = { "cadastro": "Cadastro", "login": "Login", "logout": "Saída", "login-falhou": "Login com erro", "senha": "Troca de senha", "admin-senha": "Redefiniu senha", "admin-aprovar": "Aprovou acesso", "admin-bloquear": "Bloqueou acesso", "admin-tornar-admin": "Papel de administrador",
+  "alerta-criar": "Criou alerta", "alerta-editar": "Editou alerta", "alerta-pausar": "Pausou alerta", "alerta-reativar": "Reativou alerta", "alerta-excluir": "Excluiu alerta", "alerta-verificar": "Verificou alerta", "alerta-migrar": "Migrou alertas", "notificacao-lida": "Leu notificações",
+  "analise-anuncio": "Leu anúncio", "analise-manual": "Análise manual", "analise-catalogo": "Abriu análise", "busca-oportunidades": "Buscou oportunidades", "busca-codigo": "Buscou por código", "busca-endereco": "Buscou por endereço",
+  "relatorio-pdf": "Gerou PDF", "compartilhar-link": "Copiou link", "compartilhar-whatsapp": "Enviou no WhatsApp", "comparar": "Comparou imóveis", "premissas": "Alterou premissa", "rotina-alertas": "Rotina automática" };
+async function consultarAuditoria(mais) {
+  AUD.pagina = mais ? AUD.pagina + 1 : 0;
+  const q = new URLSearchParams({ mes: $("au-mes").value, usuario: $("au-usuario").value, tipo: $("au-tipo").value, pagina: AUD.pagina, tamanho: 100 });
+  $("au-buscar").disabled = true;
+  try {
+    const r = await fetch("/api/auditoria?" + q, { cache: "no-store" });
+    const j = await r.json().catch(() => ({ ok: false, erro: `Servidor respondeu ${r.status}.` }));
+    if (r.status === 401) { sessaoExpirada(); return; }
+    if (!j.ok) throw new Error(j.erro);
+    AUD.registros = mais ? AUD.registros.concat(j.registros) : j.registros; AUD.total = j.total;
+    $("au-total").textContent = j.total ? `${j.total} registro(s) no filtro. Mostrando ${AUD.registros.length}, do mais recente para o mais antigo.` : "Nenhum registro para esse filtro.";
+    $("au-tabela").innerHTML = AUD.registros.length ? `<thead><tr><th>Data e hora</th><th style="text-align:left">Usuário</th><th style="text-align:left">Ação</th><th style="text-align:left">Descrição</th></tr></thead><tbody>${AUD.registros.map((x) => `<tr><td>${dataHoraBR(x.quando)}</td><td style="text-align:left;white-space:normal"><b>${esc(x.nome)}</b>${x.email ? `<br><span class="sub" style="font-size:.78rem">${esc(x.email)}</span>` : ""}</td><td style="text-align:left"><span class="chip ${x.tipo === "login-falhou" || x.tipo.endsWith("excluir") || x.tipo === "admin-bloquear" ? "vermelho" : x.tipo.startsWith("admin") ? "roxo" : "azul"}">${esc(ROT_TIPO[x.tipo] || x.tipo)}</span></td><td style="text-align:left;white-space:normal">${esc(x.descricao)}</td></tr>`).join("")}</tbody>` : "";
+    $("au-mais").classList.toggle("oculto", AUD.registros.length >= j.total);
+  } catch (e) { aviso("Não foi possível consultar a auditoria: " + e.message, "erro", "aviso-equipe"); }
+  finally { $("au-buscar").disabled = false; }
+}
+$("au-buscar").addEventListener("click", () => consultarAuditoria(false));
+$("au-mais").addEventListener("click", () => consultarAuditoria(true));
+$("au-csv").addEventListener("click", async () => {
+  const q = new URLSearchParams({ mes: $("au-mes").value, usuario: $("au-usuario").value, tipo: $("au-tipo").value, pagina: 0, tamanho: 500 });
+  const linhas = [["Data e hora", "Usuário", "E-mail", "Ação", "Descrição"]];
+  try {
+    for (let pg = 0; pg < 20; pg++) {
+      q.set("pagina", pg);
+      const j = await (await fetch("/api/auditoria?" + q, { cache: "no-store" })).json();
+      if (!j.ok) throw new Error(j.erro);
+      j.registros.forEach((x) => linhas.push([new Date(x.quando).toLocaleString("pt-BR"), x.nome, x.email || "", ROT_TIPO[x.tipo] || x.tipo, x.descricao]));
+      if ((pg + 1) * 500 >= j.total) break;
+    }
+  } catch (e) { aviso("Não foi possível gerar a planilha: " + e.message, "erro", "aviso-equipe"); return; }
+  const csv = "\ufeff" + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `auditoria-radar-${$("au-mes").value}.csv`; document.body.appendChild(a); a.click(); a.remove();
+});
+
 // ================= equipe (administradores) =================
 async function carregarEquipe(silencioso) {
   try {
     const j = await apiAuth({ acao: "equipe" });
     const pend = j.usuarios.filter((u) => u.status === "pendente").length;
+    const atual = $("au-usuario").value;
+    $("au-usuario").innerHTML = '<option value="">Todos</option><option value="sistema">Sistema (rotinas automáticas)</option><option value="anonimo">Não identificado (login com e-mail inexistente)</option>' + j.usuarios.map((u) => `<option value="${esc(u.id)}">${esc(u.nome)} (${esc(u.email)})</option>`).join("");
+    $("au-usuario").value = atual;
     $("badge-equipe").textContent = pend; $("badge-equipe").classList.toggle("oculto", !pend);
     const st = { ativo: ["Ativo", "verde"], pendente: ["Aguardando aprovação", "ambar"], bloqueado: ["Bloqueado", "vermelho"] };
     $("tabela-equipe").innerHTML = `<thead><tr><th>Pessoa</th><th>Situação</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody>${j.usuarios.map((u) => `<tr data-email="${esc(u.email)}">
@@ -1737,6 +1893,7 @@ async function buscar(rolar = true) {
   catch (e) { alvo.innerHTML = `<div class="aviso on erro">Não foi possível consultar o catálogo agora: ${esc(e.message)} Tente de novo em alguns minutos.</div>`; $("btn-buscar").disabled = false; return; }
   $("btn-buscar").disabled = false;
   const lista = C.filtrarPortfolio(CAT.dados, c, CAT.stats);
+  registrarAcao("busca-oportunidades", resumoCriterios(c));
   const ordem = $("b-ordem").value;
   const preco = (im) => (c.negociacao === "locacao" ? im.preco_locacao : im.preco_venda);
   lista.sort((a, b) => {
@@ -1834,6 +1991,7 @@ $("btn-comparar").addEventListener("click", () => {
     ${linha("Aluguel estimado", ({ r }) => brl(r.est.aluguelEst))}${linha("Renda bruta estimada", ({ r }) => pct(r.est.rendaBruta))}
     ${linha("Compatibilidade", ({ r }) => (vazioCrit(c) ? "—" : r.nivel))}
     ${linha("Análise", ({ im }) => `<button class="botao pequeno sec" type="button" data-analisar="${esc(im.ref)}">Ver análise</button>`)}</tbody>`;
+  registrarAcao("comparar", itens.map(({ im }) => "Ref. " + im.ref).join(", "));
   $("comparacao").classList.remove("oculto"); $("comparacao").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 $("comparacao").addEventListener("click", (e) => { const b = e.target.closest("[data-analisar]"); if (b) { const im = acharNoCatalogo(b.dataset.analisar); if (im) abrirAnaliseDe(im, BUSCA.fin); } });
@@ -1845,6 +2003,7 @@ $("salvos-lista").addEventListener("click", (e) => { const b = e.target.closest(
 
 // Abre a análise individual a partir de um resultado, sem redigitar nada
 async function abrirAnaliseDe(im, finalidade, origem = "oportunidades") {
+  registrarAcao("analise-catalogo", `Ref. ${im.ref}, ${im.tipo || ""} em ${im.bairro || "—"} (aberta em ${origem === "analise" ? "Analisar imóvel" : origem === "alertas" ? "Meus alertas" : "Oportunidades"})`);
   limparImovel();
   Object.assign(IMOVEL, { ref: im.ref, url: im.url, foto: im.foto, tipo: im.tipo, bairro: im.bairro, suites: im.suites, tags: im.tags || [], fonte: "catalogo" });
   abrirFormulario({ preco: im.preco_venda, area: im.area, quartos: im.quartos, banheiros: im.banheiros, vagas: im.vagas, bairro: im.bairro, tipo: im.tipo, mobiliado: (im.tags || []).includes("Mobiliado") });
