@@ -92,19 +92,17 @@ function quantil(a, q) {
 }
 const preco = (v) => { const n = Number(String(v || "").replace(/[$R\s,]/g, "")); return isFinite(n) && n > 0 ? n : null; };
 
-function novoGrupo() { return { n: 0, ativos: 0, diarias: [], noites: [], receitas: [], mp: [] }; }
+function novoGrupo() { return { n: 0, ativos: 0, diarias: [], noites: [], receitas: [] }; }
 function somar(g, l) {
   g.n++;
   if (l.curta && l.diaria) g.diarias.push(l.diaria);
   if (l.ativo) { g.ativos++; if (l.noites !== null) g.noites.push(l.noites); if (l.receita) g.receitas.push(l.receita); }
-  if (l.medio && l.diaria) g.mp.push(l.diaria);
 }
 function resumir(g) {
   return {
     n: g.n, ativos: g.ativos,
     diaria_p25: quantil(g.diarias, 0.25), diaria_p50: mediana(g.diarias), diaria_p75: quantil(g.diarias, 0.75),
     noites_p50: mediana(g.noites), receita_p50: mediana(g.receitas),
-    n_medio_prazo: g.mp.length, diaria_medio_prazo_p50: mediana(g.mp),
   };
 }
 
@@ -127,7 +125,7 @@ async function processarInsideAirbnb(stream, versao, urlArquivo) {
     const receitaCsv = preco(r.estimated_revenue_l365d);
     const l = {
       diaria, quartos: r.bedrooms === "" || r.bedrooms === undefined ? null : Number(r.bedrooms),
-      curta: minN < 28, medio: minN >= 28, ativo: ltm > 0, noites,
+      curta: minN < 28, ativo: ltm > 0, noites,
       receita: receitaCsv || (diaria && noites ? diaria * noites : null),
     };
     const distrito = (r.neighbourhood_cleansed || r.neighbourhood || "").trim();
