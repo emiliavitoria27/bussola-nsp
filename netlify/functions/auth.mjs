@@ -35,6 +35,26 @@ const cookieSessao = (tok) => `${COOKIE}=${tok}; Path=/; HttpOnly; Secure; SameS
 const cookieApagar = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 const publico = (u) => ({ id: u.id, email: u.email, nome: u.nome, papel: u.papel, status: u.status, criadoEm: u.criadoEm, ultimoAcesso: u.ultimoAcesso || null, trocarSenha: !!u.trocarSenha });
 
+// ================= AUDITORIA =================
+// Cada ação vira um registro próprio no Netlify Blobs ("radar-auditoria"), gravado só pelo servidor.
+// Não existe rota para editar ou apagar registros. Chave: log/AAAA-MM/<data ISO>__<id do usuário>__<tipo>__<aleatório>,
+// o que permite ordenar por data e filtrar por usuário e tipo sem abrir cada registro.
+export async function auditar(usuario, tipo, descricao, extra = {}) {
+  try {
+    const agora = new Date();
+    const iso = agora.toISOString();
+    const uid = usuario?.id || (usuario === "sistema" ? "sistema" : "anonimo");
+    const t = String(tipo).replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "outro";
+    const chave = `log/${iso.slice(0, 7)}/${iso}__${uid}__${t}__${crypto.randomBytes(4).toString("hex")}`;
+    await getStore({ name: "radar-auditoria", consistency: "strong" }).setJSON(chave, {
+      quando: iso, usuarioId: uid,
+      nome: usuario === "sistema" ? "Sistema (rotina automática)" : usuario?.nome || extra.nomeInformado || "Não identificado",
+      email: usuario?.email || extra.emailInformado || null,
+      tipo: t, descricao: String(descricao).slice(0, 600), detalhes: extra.detalhes || null,
+    });
+  } catch (e) { console.log("Falha ao registrar auditoria:", e.message); } // nunca derruba a ação principal
+}
+
 // Usado pelas outras funções: devolve o usuário logado e ativo, ou null.
 export async function usuarioDaSessao(req) {
   const tok = lerCookie(req); if (!tok) return null;
@@ -87,6 +107,7 @@ export default async (req) => {
       const primeiro = blobs.length === 0;
       const u = { id: "u-" + crypto.randomBytes(16).toString("hex"), email, nome, ...(await gerarHash(b.senha)), papel: primeiro ? "admin" : "corretor", status: primeiro ? "ativo" : "pendente", criadoEm: new Date().toISOString(), sessaoVersao: 1 };
       await s.setJSON(k, u);
+      await auditar(u, "cadastro", `Criou a conta ${email}${primeiro ? " (primeira conta, virou administradora)" : " (aguardando aprovação)"}.`);
       if (!primeiro) return json({ ok: true, pendente: true, mensagem: "Conta criada. Um administrador precisa aprovar seu acesso antes do primeiro login." });
       const tok = await assinar({ e: hashEmail(email), v: u.sessaoVersao, exp: Math.floor(Date.now() / 1000) + DURACAO_S }, s);
       return json({ ok: true, usuario: publico(u), mensagem: "Você é a primeira pessoa cadastrada e virou administradora. Aprove os próximos acessos em “Equipe”." }, 200, { "set-cookie": cookieSessao(tok) });
@@ -98,16 +119,17 @@ export default async (req) => {
       if (t.ate > Date.now()) return json({ ok: false, erro: "Muitas tentativas erradas. Aguarde 15 minutos e tente de novo." }, 429);
       const u = await s.get(`usuario/${he}`, { type: "json" });
       const certo = u ? await confere(String(b.senha || ""), u) : (await scrypt("x", Buffer.alloc(16)), false); // tempo parecido mesmo sem conta
-      if (!certo) { await tentativas(s, he, true); return json({ ok: false, erro: "E-mail ou senha incorretos." }, 401); }
+      if (!certo) { const tt = await tentativas(s, he, true); await auditar(u || null, "login-falhou", `Tentativa de login com senha incorreta para ${email}${tt.ate ? "; e-mail bloqueado por 15 minutos" : ""}.`, { emailInformado: email }); return json({ ok: false, erro: "E-mail ou senha incorretos." }, 401); }
       await tentativas(s, he, false);
       if (u.status === "pendente") return json({ ok: false, erro: "Seu acesso ainda não foi aprovado por um administrador." }, 403);
       if (u.status === "bloqueado") return json({ ok: false, erro: "Seu acesso está bloqueado. Fale com um administrador." }, 403);
       u.ultimoAcesso = new Date().toISOString(); await s.setJSON(`usuario/${he}`, u);
+      await auditar(u, "login", "Entrou no sistema.");
       const tok = await assinar({ e: he, v: u.sessaoVersao, exp: Math.floor(Date.now() / 1000) + DURACAO_S }, s);
       return json({ ok: true, usuario: publico(u) }, 200, { "set-cookie": cookieSessao(tok) });
     }
 
-    if (acao === "sair") return json({ ok: true }, 200, { "set-cookie": cookieApagar });
+    if (acao === "sair") { const quem = await usuarioDaSessao(req); if (quem) await auditar(quem, "logout", "Saiu do sistema."); return json({ ok: true }, 200, { "set-cookie": cookieApagar }); }
 
     const eu = await usuarioDaSessao(req);
     if (!eu) return json({ ok: false, erro: "Sessão expirada. Entre de novo." }, 401);
@@ -118,6 +140,7 @@ export default async (req) => {
       if (senhaFraca(b.nova)) return json({ ok: false, erro: "A nova senha precisa ter pelo menos 10 caracteres, com letras e números." }, 400);
       Object.assign(eu, await gerarHash(b.nova), { trocarSenha: false, sessaoVersao: eu.sessaoVersao + 1 });
       await s.setJSON(kEu, eu);
+      await auditar(eu, "senha", "Trocou a própria senha.");
       const tok = await assinar({ e: hashEmail(eu.email), v: eu.sessaoVersao, exp: Math.floor(Date.now() / 1000) + DURACAO_S }, s);
       return json({ ok: true, usuario: publico(eu) }, 200, { "set-cookie": cookieSessao(tok) });
     }
@@ -140,9 +163,11 @@ export default async (req) => {
       const temp = crypto.randomBytes(9).toString("base64url").replace(/[-_]/g, "x") + "7a";
       Object.assign(alvo, await gerarHash(temp), { trocarSenha: true, sessaoVersao: alvo.sessaoVersao + 1 });
       await s.setJSON(kAlvo, alvo);
+      await auditar(eu, "admin-senha", `Redefiniu a senha de ${alvo.nome} (${alvo.email}) com uma senha temporária.`);
       return json({ ok: true, senhaTemporaria: temp, usuario: publico(alvo) });
     } else return json({ ok: false, erro: "Ação desconhecida." }, 400);
     await s.setJSON(kAlvo, alvo);
+    await auditar(eu, "admin-" + acao, acao === "aprovar" ? `Aprovou o acesso de ${alvo.nome} (${alvo.email}).` : acao === "bloquear" ? `Bloqueou o acesso de ${alvo.nome} (${alvo.email}).` : `${alvo.papel === "admin" ? "Deu" : "Retirou"} o papel de administrador de ${alvo.nome} (${alvo.email}).`);
     return json({ ok: true, usuario: publico(alvo) });
   } catch (e) {
     return json({ ok: false, erro: "Não foi possível concluir: " + e.message }, 500);

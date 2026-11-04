@@ -1,7 +1,7 @@
 // API dos alertas de oportunidades. Guarda tudo no Netlify Blobs (incluído no plano gratuito).
 // Cada alerta pertence ao usuário logado (login com e-mail corporativo, ver auth.mjs).
 import { getStore } from "@netlify/blobs";
-import { usuarioDaSessao, origemValida } from "./auth.mjs";
+import { usuarioDaSessao, origemValida, auditar } from "./auth.mjs";
 import { rodarVerificacao, proximaVerificacao, carregarPortfolio } from "../../compat.mjs";
 
 export const config = { path: "/api/alertas" };
@@ -62,6 +62,7 @@ export default async (req) => {
           await store.delete(b.key);
         }
       }
+      await auditar(usuario, "alerta-migrar", `Trouxe ${n} alerta(s) criados antes do login para a conta.`);
       return json({ ok: true, migrados: n });
     }
 
@@ -81,6 +82,18 @@ export default async (req) => {
         status: a.status === "pausado" ? "pausado" : "ativo",
         criadoEm: antigo?.criadoEm || agora.toISOString(), atualizadoEm: agora.toISOString(),
       };
+      const resumo = (a) => [a.criterios.negociacao === "locacao" ? "alugar" : "comprar", a.criterios.tipo, a.criterios.bairros?.join("/"), a.criterios.precoMax && "até R$ " + a.criterios.precoMax.toLocaleString("pt-BR"), a.criterios.quartosMin && a.criterios.quartosMin + "+ quartos"].filter(Boolean).join(", ");
+      if (!antigo) await auditar(usuario, "alerta-criar", `Criou o alerta “${novo.nome}” (${resumo(novo)}).`);
+      else {
+        const mud = [];
+        if (antigo.nome !== novo.nome) mud.push(`nome “${antigo.nome}” → “${novo.nome}”`);
+        if (JSON.stringify(antigo.criterios) !== JSON.stringify(novo.criterios)) mud.push(`critérios ${resumo(antigo)} → ${resumo(novo)}`);
+        if (antigo.status !== novo.status) mud.push(novo.status === "pausado" ? "pausou" : "reativou");
+        if (antigo.frequencia !== novo.frequencia) mud.push(`frequência ${antigo.frequencia} → ${novo.frequencia}`);
+        if (antigo.nivelMin !== novo.nivelMin) mud.push(`compatibilidade mínima ${antigo.nivelMin} → ${novo.nivelMin}`);
+        if (antigo.cliente !== novo.cliente) mud.push("referência do cliente");
+        await auditar(usuario, antigo.status !== novo.status && mud.length === 1 ? (novo.status === "pausado" ? "alerta-pausar" : "alerta-reativar") : "alerta-editar", `Alterou o alerta “${novo.nome}”: ${mud.join("; ") || "sem mudanças"}.`);
+      }
       const criteriosMudaram = !antigo || JSON.stringify(antigo.criterios) !== JSON.stringify(novo.criterios) || antigo.nivelMin !== novo.nivelMin;
       if (criteriosMudaram) {
         // linha de base: o que já existe hoje aparece em "encontrados"; só anúncios novos geram notificação
@@ -95,7 +108,9 @@ export default async (req) => {
     }
     if (acao === "excluir") {
       const id = limpa(corpo.id, 40);
+      const exc = await store.get(`alerta/${chave}/${id}`, { type: "json" });
       await store.delete(`alerta/${chave}/${id}`);
+      await auditar(usuario, "alerta-excluir", `Excluiu o alerta “${exc?.nome || id}” e as notificações dele.`);
       const ln = await store.list({ prefix: `notif/${chave}/${id}__` });
       await Promise.all(ln.blobs.map((b) => store.delete(b.key)));
       return json({ ok: true });
@@ -106,6 +121,7 @@ export default async (req) => {
       if (!a) return json({ ok: false, erro: "Alerta não encontrado." }, 404);
       const p = await carregarPortfolio();
       const r = await rodarVerificacao(store, a, p);
+      await auditar(usuario, "alerta-verificar", `Executou a verificação manual do alerta “${a.nome}”: ${r.alerta.encontrados} compatíveis, ${r.novos} nova(s) oportunidade(s).`);
       delete r.alerta.vistos;
       return json({ ok: true, alerta: r.alerta, novos: r.novos });
     }
@@ -116,6 +132,7 @@ export default async (req) => {
         const n = await store.get(k, { type: "json" });
         if (n && !n.lida) await store.setJSON(k, { ...n, lida: true, lidaEm: new Date().toISOString() });
       }));
+      if (ids.length) await auditar(usuario, "notificacao-lida", `Marcou ${ids.length} notificação(ões) como lida(s).`);
       return json({ ok: true });
     }
     return json({ ok: false, erro: "Ação desconhecida." }, 400);

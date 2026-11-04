@@ -2,6 +2,7 @@
 // Verifica os alertas ativos cuja próxima verificação já chegou e grava as notificações novas.
 import { getStore } from "@netlify/blobs";
 import { rodarVerificacao, carregarPortfolio } from "../../compat.mjs";
+import { auditar } from "./auth.mjs";
 
 export const config = { schedule: "0 11 * * *" };
 
@@ -26,5 +27,6 @@ export default async () => {
   registro.fim = new Date().toISOString();
   const log = (await store.get("sistema/log-verificacoes", { type: "json" })) || [];
   await store.setJSON("sistema/log-verificacoes", [registro, ...log].slice(0, 60));
+  await auditar("sistema", "rotina-alertas", `Verificação automática de alertas: ${registro.verificados} verificado(s), ${registro.novos} nova(s) oportunidade(s)${registro.erro ? ". Aviso: " + registro.erro : ""}.`);
   console.log(JSON.stringify(registro));
 };

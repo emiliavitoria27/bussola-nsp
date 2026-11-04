@@ -1,16 +1,17 @@
 // Lê um anúncio do site www.novasaopaulo.com.br e devolve os dados em JSON.
 // Roda no servidor do Netlify (o navegador não consegue ler outro site direto).
 
-import { usuarioDaSessao } from "./auth.mjs";
+import { usuarioDaSessao, auditar } from "./auth.mjs";
 
 const DOMINIOS_PERMITIDOS = ["novasaopaulo.com.br"];
 
 export default async (req) => {
   const cabecalhos = {
     "content-type": "application/json; charset=utf-8",
-    "cache-control": "public, max-age=900", // 15 min de cache: aguenta muita gente ao mesmo tempo
+    "cache-control": "private, max-age=900", // cache só no navegador de quem pediu (exige login)
   };
-  if (!(await usuarioDaSessao(req))) return new Response(JSON.stringify({ ok: false, erro: "Entre com seu e-mail e senha para ler anúncios.", login: true }), { status: 401, headers: { "content-type": "application/json; charset=utf-8" } });
+  const usuario = await usuarioDaSessao(req);
+  if (!usuario) return new Response(JSON.stringify({ ok: false, erro: "Entre com seu e-mail e senha para ler anúncios.", login: true }), { status: 401, headers: { "content-type": "application/json; charset=utf-8" } });
   try {
     const url = new URL(req.url).searchParams.get("url") || "";
     let alvo;
@@ -33,6 +34,7 @@ export default async (req) => {
     if (!resp.ok) return erro(`O site do anúncio respondeu com erro ${resp.status}. Tente de novo em instantes ou preencha à mão.`, 502);
     const html = await resp.text();
     const dados = extrair(html, alvo.toString());
+    await auditar(usuario, "analise-anuncio", `Leu o anúncio ${dados.ref || alvo.pathname} (${[dados.tipo, dados.bairro, dados.preco && "R$ " + dados.preco.toLocaleString("pt-BR")].filter(Boolean).join(", ")}).`);
     if (!dados.preco || !dados.area) {
       return new Response(JSON.stringify({ ok: true, parcial: true, dados, aviso: "Li o anúncio, mas faltaram alguns números. Confira os campos." }), { headers: cabecalhos });
     }
