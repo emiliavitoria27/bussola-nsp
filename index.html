@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Radar do Imóvel · Nova São Paulo</title>
+<title>Bússola NSP · Nova São Paulo</title>
 <meta name="description" content="Inteligência imobiliária da Nova São Paulo: análise de moradia e investimento, busca de oportunidades no portfólio e alertas.">
 <meta name="theme-color" content="#0E2A47">
 <script>try{var t=localStorage.getItem("radar-tema");t=t?JSON.parse(t):null;if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
@@ -316,7 +316,7 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
 </svg>
 
 <nav class="lateral" aria-label="Menu principal">
-  <div class="marca"><span class="logo"><svg class="ic"><use href="#i-invest"/></svg></span><span><b>Radar do Imóvel</b><small>Nova São Paulo</small></span></div>
+  <div class="marca"><span class="logo"><svg class="ic"><use href="#i-invest"/></svg></span><span><b>Bússola NSP</b><small>Nova São Paulo</small></span></div>
   <div class="nav">
     <a href="#analise" data-view="analise"><svg class="ic"><use href="#i-casa"/></svg><span>Analisar imóvel</span></a>
     <a href="#oportunidades" data-view="oportunidades"><svg class="ic"><use href="#i-busca"/></svg><span>Oportunidades</span></a>
@@ -335,14 +335,14 @@ footer{color:var(--suave);font-size:.8rem;padding:24px 0 0;max-width:80ch}
 
 <main>
 <div class="conteudo">
-  <div class="topo-movel"><b>Radar do Imóvel</b>
+  <div class="topo-movel"><b>Bússola NSP</b>
     <span style="display:flex;gap:6px"><button type="button" class="btn-tema" data-tema aria-label="Alternar modo claro e escuro"><svg class="ic" style="width:16px;height:16px"><use href="#i-tema"/></svg><span>Tema escuro</span></button><button type="button" class="btn-tema sair-m" data-sair>Sair</button></span>
   </div>
 
   <!-- ================= LOGIN ================= -->
   <section class="view" id="v-login" aria-labelledby="t-login">
     <div class="login"><div class="caixa">
-      <div class="marca-login"><span class="logo"><svg class="ic"><use href="#i-invest"/></svg></span><span><b style="font-size:1.15rem">Radar do Imóvel</b><br><span class="sub">Nova São Paulo</span></span>
+      <div class="marca-login"><span class="logo"><svg class="ic"><use href="#i-invest"/></svg></span><span><b style="font-size:1.15rem">Bússola NSP</b><br><span class="sub">Nova São Paulo</span></span>
         <button type="button" class="botao pequeno sec" data-tema style="margin-left:auto" aria-label="Alternar modo claro e escuro"><svg class="ic" style="width:16px;height:16px"><use href="#i-tema"/></svg><span>Tema escuro</span></button></div>
       <div class="card">
         <h1 id="t-login" style="font-size:1.35rem">Acesso da equipe</h1>
@@ -806,8 +806,8 @@ function premissasPadrao() {
     { id: "adm", rot: "Taxa de administração do aluguel (%)", v: 10, fonte: "Prática de mercado" },
     { id: "ir", rot: "Imposto de renda sobre o aluguel (% efetivo)", v: 15, fonte: "Hipótese; depende da sua renda (carnê-leão chega a 27,5%)" },
     { id: "cub", rot: "Custo de construção, CUB R8-N (R$/m²)", v: 2221.44, fonte: "SindusCon-SP, junho/2026 (base da estimativa de manutenção)" },
-    { id: "manutApto", rot: "Manutenção de apartamento (% ao ano do custo de reconstrução)", v: 1.0, fonte: "Hipótese do Radar: parte interna da unidade; áreas comuns já estão no condomínio" },
-    { id: "manutCasa", rot: "Manutenção de casa (% ao ano do custo de reconstrução)", v: 1.5, fonte: "Hipótese do Radar: inclui telhado, fachada e áreas externas" },
+    { id: "manutApto", rot: "Manutenção de apartamento (% ao ano do custo de reconstrução)", v: 1.0, fonte: "Hipótese da Bússola: parte interna da unidade; áreas comuns já estão no condomínio" },
+    { id: "manutCasa", rot: "Manutenção de casa (% ao ano do custo de reconstrução)", v: 1.5, fonte: "Hipótese da Bússola: inclui telhado, fachada e áreas externas" },
     { id: "itbi", rot: "ITBI (%)", v: 3, fonte: "Prefeitura de São Paulo, alíquota geral" },
     { id: "cartorio", rot: "Escritura e registro (%)", v: 1.5, fonte: "Estimativa; confirme no cartório" },
     { id: "valoriza", rot: "Valorização do imóvel por ano (%)", v: I.venda_var12m?.valor ?? 5.5, fonte: I.venda_var12m ? `${I.venda_var12m.fonte}, 12 meses até ${I.venda_var12m.data}` : "FipeZAP" },
@@ -1144,7 +1144,7 @@ function gerarNegociacao(R) {
   const alugB = R.estBairro && /bairro/.test(R.estBairro.fonteAluguel || "") ? R.estBairro : null;
   if (alugB) args.push({ t: `Aluguel estimado de ${brl(alugB.aluguelEst)}/mês pela ${alugB.fonteAluguel}: ${pct(alugB.rendaBruta)} ao ano bruto sobre o preço.`, f: "catálogo da Nova São Paulo" });
   if (R.ref?.n) args.push({ t: `Temporada na região: diária típica de ${brl(R.ref.diaria)} e cerca de ${Math.round(R.ref.noites)} noites ocupadas por ano (${R.ref.n} anúncios).`, f: `Inside Airbnb, coleta de ${dataBR(R.ref.versao)}` });
-  if (R.liq >= 65) args.push({ t: `Índice de revenda de ${R.liq}/100: tipo, tamanho, faixa de preço e transporte favorecem uma venda futura.`, f: "índice do Radar" });
+  if (R.liq >= 65) args.push({ t: `Índice de revenda de ${R.liq}/100: tipo, tamanho, faixa de preço e transporte favorecem uma venda futura.`, f: "índice da Bússola" });
   const h = noCat?.historico_preco || [];
   if (h.length >= 2 && h[0].venda < h[1].venda) args.push({ t: `Preço já reduzido de ${brl(h[1].venda)} para ${brl(h[0].venda)} (${pct(1 - h[0].venda / h[1].venda, 0)}).`, f: "histórico do catálogo da Nova SP" });
 
@@ -1197,7 +1197,7 @@ function gerarNegociacao(R) {
         ["Argumentos para o corretor", ["Anúncios mostram preço pedido; o comprador compara e negocia sobre os mais baratos da mesma faixa.", "Preço acima do mercado reduz visitas e propostas e costuma terminar em redução maior depois."]],
         ["Alternativas", ["Combinar uma revisão de preço após um prazo definido (por exemplo, 30 dias) caso não haja visitas.", "Pedir um PTAM para ter um valor técnico independente."]]] },
     { titulo: "“Não aceito proposta abaixo do anunciado”", relevante: true,
-      partes: [["Argumento do proprietário", "Resistência a qualquer desconto."], ["Análise com os dados", [`Faixa de proposta calculada pelo Radar: da aba “Proposta”.`, R.liq < 50 ? `Índice de revenda de ${R.liq}/100: perfil de venda mais lenta.` : `Índice de revenda de ${R.liq}/100.`]],
+      partes: [["Argumento do proprietário", "Resistência a qualquer desconto."], ["Análise com os dados", [`Faixa de proposta calculada pela Bússola: da aba “Proposta”.`, R.liq < 50 ? `Índice de revenda de ${R.liq}/100: perfil de venda mais lenta.` : `Índice de revenda de ${R.liq}/100.`]],
         ["Argumentos para o corretor", ["Compare o desconto com o custo de manter o imóvel parado.", `Cada mês sem vender custa cerca de ${brl(R.fixoMes + R.manutAno / 12)} (condomínio, IPTU e manutenção)${f.condoInformado ? "" : "; condomínio não informado"}.`, `Em ${virg(P.aplicacao)}% ao ano, o dinheiro da venda renderia cerca de ${brl(f.preco * P.aplicacao / 100 / 12)} por mês.`]],
         ["Alternativas", ["Aceitar desconto com contrapartidas: sinal maior, prazo curto ou pagamento à vista.", "Manter o preço e negociar itens (móveis planejados, prazo de desocupação)."]]] },
     { titulo: "“Outros imóveis estão anunciados por mais”", relevante: !!(conc && conc.n),
@@ -1214,7 +1214,7 @@ function gerarNegociacao(R) {
         ["Argumentos para o corretor", ["Velocidade de venda depende de preço competitivo dentro da faixa dos parecidos.", conc && conc.maisBaratos.length ? `O parecido mais barato da carteira em ${f.bairro} está a ${brl(conc.maisBaratos[0].preco_venda / conc.maisBaratos[0].area)}/m² (Ref. ${conc.maisBaratos[0].ref}); este está a ${brl(R.m2)}/m².` : "Compare com os parecidos mais baratos."]],
         ["Alternativas", ["Ajuste pequeno de preço com prazo combinado.", "Aceitar propostas com financiamento pré-aprovado para encurtar o fechamento."]]] },
     { titulo: "“Não entendo o que a imobiliária faz”", relevante: false,
-      partes: [["Argumento do proprietário", "Não vê valor no serviço."], ["Análise com os dados", ["O Radar registra análise de preço, comparação com o bairro e alertas de clientes compatíveis."]],
+      partes: [["Argumento do proprietário", "Não vê valor no serviço."], ["Análise com os dados", ["A Bússola registra análise de preço, comparação com o bairro e alertas de clientes compatíveis."]],
         ["Argumentos para o corretor", ["Mostre o relatório do imóvel, a comparação com parecidos e o número de clientes com alerta compatível (em Meus alertas).", "Explique as etapas: preço, divulgação, visitas, proposta, documentação e escritura."]],
         ["Alternativas", ["Combinar relatórios periódicos de visitas e propostas para dar transparência."]]] },
   ];
@@ -1258,7 +1258,7 @@ const CRITERIOS = {
     { id: "distrib", nome: "Características e distribuição", peso: 15, como: "Área por quarto (28 m² ou mais = 100; 22 a 28 = 70; menos = 40), vaga, suíte e relação banheiros/quartos." },
     { id: "conserv", nome: "Estado de conservação", peso: 10, como: "Novo ou reformado = 100; bom = 75; regular = 45; precisa de reforma = 20. Só conta se informado (anúncio ou campo do formulário)." },
     { id: "difer", nome: "Diferenciais", peso: 5, como: "Itens de lazer do condomínio e diferenciais citados no anúncio (varanda, planejados, vista etc.): 4 ou mais = 100; 2 a 3 = 75; 1 = 55." },
-    { id: "liquidez", nome: "Revenda e liquidez", peso: 15, como: "Índice de facilidade de revenda do Radar: tipo, metrô, vaga, faixa de preço, tamanho e condomínio." },
+    { id: "liquidez", nome: "Revenda e liquidez", peso: 15, como: "Índice de facilidade de revenda da Bússola: tipo, metrô, vaga, faixa de preço, tamanho e condomínio." },
     { id: "custos", nome: "Custos de morar", peso: 10, como: "Começa em 100 e desconta: condomínio acima de R$ 15/m² (−20) ou R$ 20/m² (−40); IPTU anual acima de 1% do preço (−15); manutenção estimada acima de R$ 25/m² ao ano (−15)." },
   ],
   investimento: [
@@ -1267,7 +1267,7 @@ const CRITERIOS = {
     { id: "locacao", nome: "Potencial de locação", peso: 15, como: "Aluguel bruto anual ÷ preço, com a mediana de aluguel da Nova SP no bairro (mínimo de 3 imóveis) ou a média da cidade. 2,5% = 0; 7% ou mais = 100." },
     { id: "demanda", nome: "Demanda por aluguel na região", peso: 10, como: "Noites ocupadas por ano dos anúncios de temporada da região (Inside Airbnb): 200 ou mais = 100; 150 = 80; 100 = 55; 60 = 30. Não há dado público de demanda para aluguel tradicional." },
     { id: "valoriza", nome: "Potencial de valorização", peso: 10, como: "Exige série histórica de preços por bairro. Ainda sem dados confiáveis; fica fora até o catálogo acumular histórico." },
-    { id: "liquidez", nome: "Liquidez e revenda", peso: 10, como: "Índice de facilidade de revenda do Radar." },
+    { id: "liquidez", nome: "Liquidez e revenda", peso: 10, como: "Índice de facilidade de revenda da Bússola." },
     { id: "custosop", nome: "Custos operacionais", peso: 10, como: "(Condomínio + IPTU + manutenção) ÷ aluguel estimado: até 25% = 100; 40% = 60; 60% ou mais = 10." },
     { id: "riscos", nome: "Riscos", peso: 10, como: "Começa em 100 e desconta: preço mais de 10% acima dos parecidos (−25); melhor renda depende de curta temporada (−15); poucos anúncios de temporada na amostra (−15); condomínio acima de R$ 20/m² (−20); precisa de reforma (−20)." },
   ],
@@ -1634,10 +1634,10 @@ function montarRelatorio(ids) {
   const escolhidas = SECOES_REL.filter((x) => ids.includes(x.id));
   const hoje = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   const para = $("rel-para").value.trim();
-  $("relatorio").innerHTML = `<header class="rel-cab"><div><b>Radar do Imóvel</b><br><span style="text-align:left">Nova São Paulo</span></div><span>Relatório de análise · ${esc(hoje)}<br>Finalidade: ${esc(FINALIDADE)}${para ? `<br>Preparado para: ${esc(para)}` : ""}${SESSAO.usuario ? `<br>Por: ${esc(SESSAO.usuario.nome)}` : ""}</span></header>
+  $("relatorio").innerHTML = `<header class="rel-cab"><div><b>Bússola NSP</b><br><span style="text-align:left">Nova São Paulo</span></div><span>Relatório de análise · ${esc(hoje)}<br>Finalidade: ${esc(FINALIDADE)}${para ? `<br>Preparado para: ${esc(para)}` : ""}${SESSAO.usuario ? `<br>Por: ${esc(SESSAO.usuario.nome)}` : ""}</span></header>
     <h1>${esc($("r-titulo").textContent)}</h1><p class="sub" style="margin:0 0 12px">${esc([IMOVEL.ref && "Ref. " + IMOVEL.ref, R.f.bairro, brl(R.f.preco)].filter(Boolean).join(" · "))}</p>
     ${escolhidas.map((x, i) => `<section class="rel-secao${x.longa ? " longa" : ""}" data-secao="${x.id}"><h2><span class="n">${i + 1}.</span>${esc(x.titulo ? x.titulo() : x.nome)}</h2>${x.html(R)}</section>`).join("")}
-    <footer class="rel-rodape">Estimativas com dados públicos e premissas editáveis; não são recomendação de investimento, avaliação técnica nem garantia de renda. Fontes: anúncio em novasaopaulo.com.br, catálogo da Nova São Paulo, Inside Airbnb (CC BY 4.0), Índice FipeZAP e Banco Central do Brasil. Gerado pelo Radar do Imóvel em ${esc(hoje)}.</footer>`;
+    <footer class="rel-rodape">Estimativas com dados públicos e premissas editáveis; não são recomendação de investimento, avaliação técnica nem garantia de renda. Fontes: anúncio em novasaopaulo.com.br, catálogo da Nova São Paulo, Inside Airbnb (CC BY 4.0), Índice FipeZAP e Banco Central do Brasil. Gerado pela Bússola NSP em ${esc(hoje)}.</footer>`;
   return escolhidas.map((x) => x.id);
 }
 $("rel-gerar").addEventListener("click", () => {
@@ -1648,7 +1648,7 @@ $("rel-gerar").addEventListener("click", () => {
   montarRelatorio(ids);
   $("dlg-relatorio").close("gerar");
   const tituloAntes = document.title;
-  document.title = `Radar do Imóvel - ${IMOVEL.ref || $("r-titulo").textContent} - ${new Date().toISOString().slice(0, 10)}`;
+  document.title = `Bússola NSP - ${IMOVEL.ref || $("r-titulo").textContent} - ${new Date().toISOString().slice(0, 10)}`;
   document.body.classList.add("imprimindo");
   const fim = () => { document.body.classList.remove("imprimindo"); document.title = tituloAntes; window.removeEventListener("afterprint", fim); };
   window.addEventListener("afterprint", fim);
