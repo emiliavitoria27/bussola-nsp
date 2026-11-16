@@ -1,12 +1,12 @@
 {
  "selic": {
   "valor": 13.75,
-  "data": "01/11/2026",
+  "data": "16/11/2026",
   "fonte": "Banco Central, série 432 (meta Selic)"
  },
  "ipca12m": {
-  "valor": 4.58,
-  "data": "01/09/2026",
+  "valor": 4.63,
+  "data": "01/10/2026",
   "fonte": "Banco Central, série 13522 (IPCA 12 meses)"
  },
  "aluguel_m2_sp": {
@@ -35,5 +35,5 @@
   "data": "jun/2026",
   "fonte": "Inside Airbnb, painel de São Paulo (média da cidade)"
  },
- "atualizado_em": "2026-11-01T09:27:49.344Z"
+ "atualizado_em": "2026-11-16T10:28:24.439Z"
 }
